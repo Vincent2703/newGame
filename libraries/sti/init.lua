@@ -386,7 +386,7 @@ function Map:setTileData(layer)
 	for y = 1, layer.height do
 		map[y] = {}
 		for x = 1, layer.width do
-			local gid = layer.data[i]
+			local gid = layer.data[i] or 0 --custom update
 
 			-- NOTE: Empty tiles have a GID of 0
 			if gid > 0 then
@@ -930,12 +930,44 @@ end
 
 --- Default draw function for Tile Layers
 -- @param layer The Tile Layer to draw
+-- custom : calculate floor layer.x and layer.y outside the loop
 function Map:drawTileLayer(layer)
 	if type(layer) == "string" or type(layer) == "number" then
 		layer = self.layers[layer]
 	end
 
 	assert(layer.type == "tilelayer", "Invalid layer type: " .. layer.type .. ". Layer must be of type: tilelayer")
+
+	layerX, layerY = floor(layer.x), floor(layer.y) --custom
+
+	-- NOTE: This does not take into account any sort of draw range clipping and will always draw every chunk
+	if layer.chunks then
+		for _, chunk in ipairs(layer.chunks) do
+			for _, batch in pairs(chunk.batches) do
+				lg.draw(batch, 0, 0)
+			end
+		end
+
+		return
+	end
+	love.graphics.setColor(1, 1, 1, layer.opacity)
+	for _, batch in pairs(layer.batches) do
+		lg.draw(batch, layerX, layerY) --custom
+	end
+	love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- CUSTOM draw the tile layer with some transparent tiles with a specific opacity's value
+function Map:drawTileLayerWTransparentTiles(layer, transparentTiles, opacityValue)
+	local opacityValue = opacityValue or 0.5
+
+	if type(layer) == "string" or type(layer) == "number" then
+		layer = self.layers[layer]
+	end
+
+	assert(layer.type == "tilelayer", "Invalid layer type: " .. layer.type .. ". Layer must be of type: tilelayer")
+
+	layerX, layerY = floor(layer.x), floor(layer.y)
 
 	-- NOTE: This does not take into account any sort of draw range clipping and will always draw every chunk
 	if layer.chunks then
@@ -949,7 +981,7 @@ function Map:drawTileLayer(layer)
 	end
 
 	for _, batch in pairs(layer.batches) do
-		lg.draw(batch, floor(layer.x), floor(layer.y))
+		lg.draw(batch, layerX, layerY)
 	end
 end
 
@@ -1630,7 +1662,7 @@ end
 --	end
 --
 --	-- Draw callback for Custom Layer
---	function spriteLayer:draw()
+--	function spriteLayer:draw() --EX DE BASE POUR CHANGER L'OPACITE DES TUILES
 --		for _, sprite in pairs(self.sprites) do
 --			local x = math.floor(sprite.x)
 --			local y = math.floor(sprite.y)

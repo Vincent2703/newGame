@@ -1,6 +1,7 @@
 function love.conf(t)
+    DEBUG = true
     VERSION = 0.1
-	t.window.title = "Firefighter game "..VERSION
+	t.window.title = "Multi game "..VERSION
     t.window.vsync = 1
 
 	t.accelerometerjoystick = false		-- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)

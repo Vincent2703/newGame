@@ -610,6 +610,51 @@ function World:querySegmentWithCoords(x1, y1, x2, y2, filter)
   return itemInfo, len
 end
 
+-- CUSTOM
+
+function World:queryAngle(x1, y1, radius, startAngle, endAngle, angleIncrement, firstInRange)
+  local items = {}
+
+  local memoizedCosSin = lume.memoize(function(angle)
+    return math.cos(math.rad(angle)), math.sin(math.rad(angle))
+  end)
+
+  if endAngle < startAngle then
+    startAngle, endAngle = endAngle, startAngle
+  end
+
+  -- Iterate over the specified angle range
+  for angle = startAngle, endAngle, angleIncrement do
+    local dx, dy = memoizedCosSin(angle)
+    local x2, y2 = x1 + dx * radius, y1 + dy * radius
+    
+    local itemsSegment = self:querySegment(x1, y1, x2, y2)
+    if not firstInRange then
+      for _, item in ipairs(itemsSegment) do
+          table.insert(items, item)
+      end
+    else -- Return only the first item intersecting the segment
+      if #itemsSegment > 0 then
+        --[[local id = 1
+        if x1 > x2 then
+          id = #itemsSegment
+        end
+        local firstSegRoom = itemsSegment[id].room
+        local itemsFiltered = lume.filter(itemsSegment, function(item)
+          return item.room == firstSegRoom
+        end)
+        for _, item in pairs(itemsFiltered) do
+          table.insert(items, item)
+        end--]]
+        table.insert(items, itemsSegment[1])
+      end
+    end
+  end
+
+  return items, #items
+end
+
+
 
 --- Main methods
 
