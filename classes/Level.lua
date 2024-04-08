@@ -3,11 +3,11 @@ Level = class("Level")
 function Level:init(width, height)
     self.bumpWorld = bump.newWorld(TILESIZE)
 
-    self.tileset = require("../assets/tiles/tileset2")
+    self.tileset = require("../assets/tiles/tileset")
 
     self.width, self.height = width, height
 
-    self.rooms = {--[[
+    self.rooms = {
         {
             x=22,
             y=4,
@@ -32,9 +32,9 @@ function Level:init(width, height)
             y=10,
             w=3,
             h=5
-        }--]]
+        }
     }
-    local nbRooms = 5
+    local nbRooms = 0
 
     for i=1, nbRooms do --Add random rooms
         if self:addRoom(self.rooms) == false then
@@ -405,8 +405,8 @@ end
 
 function Level:getRoomAtPos(x, y)
     for _, room in ipairs(self.rooms) do
-        if x >= room.x*TILESIZE and x <= (room.x+room.w)*TILESIZE and
-           y >= room.y*TILESIZE and y <= (room.y+room.h)*TILESIZE then
+        if x >= (room.x-1)*TILESIZE and x <= (room.x+room.w-1)*TILESIZE and
+           y >= (room.y-1)*TILESIZE and y <= (room.y+room.h-1)*TILESIZE then
                 return room
         end
     end
@@ -418,30 +418,22 @@ function Level:update(dt)
 end
 
 function Level:draw()
-    --love.graphics.translate(-player.x+halfWidthWindow-player.radius*2, -player.y+halfHeightWindow-player.radius*2)
-    for _, layer in ipairs(self.sti.layers) do
-        if (player.insideRoom and layer.name == "wallsBottom") or not player.insideRoom and layer.name == "wallsTop" then
-            layer.opacity = 0.8
-        else
-            layer.opacity = 1
-        end
-            self.sti:drawTileLayer(layer)
-            if layer.name == "ground" then
-                player:draw()
-            end
-        --[[if player.insideRoom then
-            local room = player.insideRoom
-            if layer.name == "wallsTop" then
-                self.sti:drawTileLayerWTransparentTiles(layer, )
+    if #client.players > 0 then --temp
+        for _, layer in ipairs(self.sti.layers) do
+            --[[if (player.insideRoom and layer.name == "wallsBottom") or not player.insideRoom and layer.name == "wallsTop" then
+                layer.opacity = 0.8
             else
+                layer.opacity = 1
+            end--]]
                 self.sti:drawTileLayer(layer)
-                if layer.name == "ground" then
-                    player:draw()
+                if layer.name == "ground" then --check if visible before drawing the players and the rest
+                    for _, player in pairs(client.players) do
+                        player:draw()
+                    end
                 end
-            end
-        end--]]
+
+        end
+        --love.graphics.origin()
+        --self.lightWorld:Draw()
     end
-    love.graphics.origin()
-    --love.graphics.translate(200, 200)
-    self.lightWorld:Draw()
 end

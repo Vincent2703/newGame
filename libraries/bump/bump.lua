@@ -628,25 +628,23 @@ function World:queryAngle(x1, y1, radius, startAngle, endAngle, angleIncrement, 
     local dx, dy = memoizedCosSin(angle)
     local x2, y2 = x1 + dx * radius, y1 + dy * radius
     
-    local itemsSegment = self:querySegment(x1, y1, x2, y2)
+    local itemsSegment, len = self:querySegment(x1, y1, x2, y2)
+
+    --query chq px jusqu'à tomber sur un mur ?
+
+    --[[itemsSegment = lume.sort(itemsSegment, 
+    function(a, b)   
+      return lume.distance(x1, y1, a.x, a.y, true) > lume.distance(x1, y1, b.x, b.y, true)
+    end)--]]
     if not firstInRange then
       for _, item in ipairs(itemsSegment) do
           table.insert(items, item)
       end
     else -- Return only the first item intersecting the segment
-      if #itemsSegment > 0 then
-        --[[local id = 1
-        if x1 > x2 then
-          id = #itemsSegment
-        end
-        local firstSegRoom = itemsSegment[id].room
-        local itemsFiltered = lume.filter(itemsSegment, function(item)
-          return item.room == firstSegRoom
-        end)
-        for _, item in pairs(itemsFiltered) do
-          table.insert(items, item)
-        end--]]
-        table.insert(items, itemsSegment[1])
+      if #itemsSegment == 2 then -- Why 2 ? è_é
+        --love.graphics.setColor(1, 0, 0, 1)
+        --love.graphics.line(x1, y1, itemsSegment[len].x, itemsSegment[len].y)
+        table.insert(items, itemsSegment[2])
       end
     end
   end

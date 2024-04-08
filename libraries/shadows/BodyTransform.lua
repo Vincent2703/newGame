@@ -30,11 +30,11 @@ function BodyTransform:new(Body)
 	
 end
 
-function BodyTransform:Update()
+function BodyTransform:Update() -- Custom fix and opti
 	
 	if self.Body then
 		
-		if self.Body:isDestroyed() then
+		if self.Body.isDestroyed and self.Body:isDestroyed() then
 			
 			self:Remove()
 		
@@ -42,13 +42,9 @@ function BodyTransform:Update()
 			
 			if self.FollowPosition then
 				
-				self:SetLocalPosition( self.Body:getPosition() )
+				self:SetLocalPosition( self.Body:GetPosition() )			
 				
-			end
-			
-			if self.FollowRotation then
-				
-				self:SetLocalRotation( math.deg( self.Body:getAngle() ) )
+				self:SetLocalRotation( math.deg( self.Body:GetAngle() ) )
 				
 			end
 			

@@ -297,22 +297,33 @@ function Light:Update()
 			love.graphics.setColor(self.R / 255, self.G / 255, self.B / 255, self.A / 255)
 			love.graphics.draw(self.Image, self.Radius, self.Radius)
 			
-		else
+		else -- custom
+			local shader
+			if self.GradientEffect and self.Arc < 360 then
+				local calcAngleGradVal = lume.memoize(function(angle, arc) return {radAngle=math.rad(angle+180), gradVal=math.pi*(math.abs(arc)/100)} end)
+				shader = libraries.shadows.GradientLightShader
+				extValues = calcAngleGradVal(self:GetAngle(), self.Arc)
+				shader:send("Angle", extValues.radAngle)
+				shader:send("GradVal", extValues.gradVal)
+			
+			else
+				shader = libraries.shadows.LightShader
+			end
 			-- Use a shader to generate the light
-			libraries.shadows.LightShader:send("Radius", self.Radius)
-			libraries.shadows.LightShader:send("Center", {self.Radius, self.Radius, z})
+			shader:send("Radius", self.Radius)
+			shader:send("Center", {self.Radius, self.Radius, z})
 			
 			-- Calculate the rotation of the light
 			local Arc = math.rad(self.Arc * 0.5)
 			local Angle = self.Transform:GetRadians(-halfPi)
 			
 			-- Set the light shader
-			love.graphics.setShader(libraries.shadows.LightShader)
+			love.graphics.setShader(shader)
 			love.graphics.setBlendMode("alpha", "premultiplied")
 			
 			-- Filling it with a arc is more efficient than with a rectangle for this case
 			love.graphics.setColor(self.R / 255, self.G / 255, self.B / 255, self.A / 255)
-			love.graphics.arc("fill", self.Radius, self.Radius, self.Radius, Angle - Arc-math.pi, Angle + Arc) --ICI POUR FAIRE COMME UNE LAMPE
+			love.graphics.arc("fill", self.Radius, self.Radius, self.Radius, Angle - Arc-math.pi, Angle + Arc)
 			
 			-- Unset the shader
 			love.graphics.setShader()

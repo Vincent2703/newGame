@@ -14,28 +14,34 @@ function love.load()
     input = Input()  
 
 
-    level = Level(25, 19) 
-    player = Player(20, 20)
+    --level = Level(25, 19) 
+    --player = Player(20, 20)
+
+    GameState = GameState()
+    GameState:setState("Home")
 
     if DEBUG then
         debug = Debug()
     end
+    
 end
 
 function love.update(dt)
-    input:update()
-    level:update(dt)
-    player:update(dt)
+    input:update() --move to keypressed/mousemoved ?
+    GameState:update(dt)
+    if server then
+        server:update(dt)
+    end
+    if client then
+        client:update(dt)
+    end
     if DEBUG then
         debug:update()
     end
 end
 
 function love.draw()
-    love.graphics.setCanvas(canvas) --ingame canvas : 
-    level:draw()
-    love.graphics.setCanvas()
-    love.graphics.draw(canvas, -player.x*zoom+halfWidthWindow, -player.y*zoom+halfHeightWindow, 0, zoom)
+    GameState:draw()
 
     if DEBUG then
         debug:draw()
@@ -50,6 +56,8 @@ function loadLibraries()
 	sti = require("libraries/sti")
     bump = require("libraries/bump/bump")
     lume = require("libraries/lume/lume")
+    bitser = require("libraries/bitser/bitser")
+    sock = require("libraries/sock/sock")
 
     Shadows = require("libraries/shadows")
     LightWorld = require("libraries/shadows/LightWorld")
@@ -61,9 +69,19 @@ end
 function loadClasses()
     require("classes/Utils")
     require("classes/Input")
+
+    require("classes/GUI/Button")
+    require("classes/GUI/ButtonSubclasses/RectangleButton")
+
+    require("classes/Network/Client")
+    require("classes/Network/Server")
     
     require("classes/Player")
     require("classes/Level")
+
+    require("classes/GameState")
+    require("classes/States/Home")
+    require("classes/States/InGame")
 
     if DEBUG then
         require("classes/Debug")

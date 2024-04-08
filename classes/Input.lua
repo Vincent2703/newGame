@@ -10,6 +10,7 @@ function Input:init()
 				   }
 				   
 	self.state = {}
+	self.state.changed = false
 	self.state.mouse = {
 						x = nil, 
 						y = nil, 
@@ -37,6 +38,7 @@ end
 
 function Input:update()
 	self.prevState = lume.clone(self.state)
+
 	-- Mouse
 	local mouseX, mouseY = love.mouse.getPosition()
 	self.state.mouse = {x=mouseX, y=mouseY}
@@ -62,31 +64,14 @@ function Input:update()
 		self.phoneBackPressed = false
 	end
 	self.state.actions.newPress.pause = self.state.actions.pause and not self.prevState.actions.pause
-	
+
+	self.state.changed = 
+		self.state.actions.click or
+		self.state.actions.right or
+		self.state.actions.down or
+		self.state.actions.up or
+		self.state.actions.left or
+		self.state.actions.pause or
+		self.state.mouse.x ~= self.prevState.mouse.x or
+		self.state.mouse.y ~= self.prevState.mouse.y
 end
-
---[[function Input:copyState(state)
-	local copyState = {}
-	copyState.mouse = {
-		x = state.mouse.x,
-		y = state.mouse.y,
-	}
-
-    copyState.actions = {
-        right = state.actions.right,
-        down = state.actions.down,
-		up = state.actions.up,
-        left = state.actions.left,
-        click = state.actions.click,
-        pause = state.actions.pause,
-        newPress = {
-            right = state.actions.newPress.right,
-            down = state.actions.newPress.down,
-			up = state.actions.newPress.up,
-            left = state.actions.newPress.left,
-            eject = state.actions.newPress.eject,
-            pause = state.actions.newPress.pause,
-        }
-    }
-	return copyState
-end--]]

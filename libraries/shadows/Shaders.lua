@@ -134,6 +134,59 @@ libraries.shadows.LightShader = love.graphics.newShader [[
 	
 ]]
 
+libraries.shadows.GradientLightShader = love.graphics.newShader [[
+    
+    // Radius of the light effect
+    extern float Radius;
+    
+    // Center of the light
+    extern vec3 Center;
+
+    // Angle of the light
+    extern float Angle;
+
+	// Gradiant value
+	extern float GradVal;
+
+	const float Pi = 3.14159265359;
+	const float DoublePi = 6.28318530718;
+
+    vec4 effect(vec4 Color, Image Texture, vec2 tc, vec2 pc) {
+        
+        // Distance between the screen pixel and the center of the light
+        vec2 Delta = pc - Center.xy;
+        float Distance = length(Delta);
+        
+        // If the distance is lower than the radius
+        if (Distance <= Radius) {
+            // Calculate the vector from the light source to the current pixel
+            vec2 lightVector = normalize(pc - Center.xy);
+            
+            // Calculate the angle between the light vector and the reference vector
+            float diffAngle = atan(lightVector.y, lightVector.x) - Angle;
+            
+            // Adjust the angle to ensure it's within the range [-π, π]
+            diffAngle = mod(diffAngle + Pi, DoublePi) - Pi;
+            
+            // Calculate brightness based on distance and angle
+            float Brightness = 1.0 - Distance / Radius;
+            Brightness *= smoothstep(0.0, 1.0, 1.0 - abs(diffAngle) / GradVal); // Adjust this value as needed
+            
+            // Return the color with adjusted alpha
+
+            return vec4(vec3(1.0) * Brightness, 1);
+        }
+        
+        // Return black
+        return vec4(0.0, 0.0, 0.0, 0.0);
+    }
+    
+]]
+
+
+
+
+
 libraries.shadowsRadialBlurShader = love.graphics.newShader [[
 	
 	// Position at which the blur is applied
@@ -146,7 +199,7 @@ libraries.shadowsRadialBlurShader = love.graphics.newShader [[
 	extern float Radius;
 	
 	// Distance multiplier
-	const float Quality		= 1; //1.3
+	const float Quality		= 0.5; //1.3
 	
 	// The value of PI
 	//const float Pi				= 3.14159; //3.141592653589793238462643383279502884197169399375;
@@ -155,7 +208,7 @@ libraries.shadowsRadialBlurShader = love.graphics.newShader [[
 	const float invPi			= 0.31830988618;  //1.0 / Pi
 	
 	// Radius of the blur PER pixel
-	const int BlurRadius	= 4; //5
+	const int BlurRadius	= 2; //5
 	
 	// This function calculates gauss
 	float gauss(vec2 vec, float deviation) {
@@ -171,7 +224,7 @@ libraries.shadowsRadialBlurShader = love.graphics.newShader [[
 	vec4 effect(vec4 Color, Image Texture, vec2 textureCoord, vec2 pixelCoord) {
 		
 		// Radius
-		float r = length(pixelCoord - Position) / Radius;
+		float r = length(pixelCoord - Position) / Radius; //Just Radius ?
 		
 		// Calculate the standard deviation for the gauss effect
 		float Deviation = 1.0 + 12.0 * r * smoothstep(0.0, 1.0, r);

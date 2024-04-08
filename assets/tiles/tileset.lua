@@ -2,25 +2,25 @@ return {
   version = "1.5",
   luaversion = "5.1",
   tiledversion = "1.8.2",
-  name = "spritesheet64",
+  name = "tileset",
   firstgid = 1,
-  tilewidth = 64,
-  tileheight = 64,
-  spacing = 0,
-  margin = 0,
+  tilewidth = 32,
+  tileheight = 32,
+  spacing = 1,
+  margin = 1,
   columns = 5,
-  image = "../../assets/textures/world/spritesheet64.png",
-  imagewidth = 320,
-  imageheight = 192,
-  objectalignment = "unspecified",
+  image = "../../assets/textures/world/spritesheet.png",
+  imagewidth = 180,
+  imageheight = 110,
+  objectalignment = "topleft",
   tileoffset = {
     x = 0,
     y = 0
   },
   grid = {
     orientation = "orthogonal",
-    width = 64,
-    height = 64
+    width = 32,
+    height = 32
   },
   properties = {},
   wangsets = {},
@@ -66,8 +66,8 @@ return {
             type = "",
             shape = "rectangle",
             x = 0,
-            y = 56,
-            width = 64,
+            y = 24,
+            width = 32,
             height = 8,
             rotation = 0,
             visible = true,
@@ -107,42 +107,6 @@ return {
     {
       id = 10,
       properties = {
-        ["position"] = "left",
-        ["type"] = "wall",
-        ["variation"] = "brick"
-      },
-      objectGroup = {
-        type = "objectgroup",
-        draworder = "index",
-        id = 2,
-        name = "",
-        visible = true,
-        opacity = 1,
-        offsetx = 0,
-        offsety = 0,
-        parallaxx = 1,
-        parallaxy = 1,
-        properties = {},
-        objects = {
-          {
-            id = 1,
-            name = "",
-            type = "",
-            shape = "rectangle",
-            x = 48,
-            y = 0,
-            width = 16,
-            height = 64,
-            rotation = 0,
-            visible = true,
-            properties = {}
-          }
-        }
-      }
-    },
-    {
-      id = 11,
-      properties = {
         ["position"] = "right",
         ["type"] = "wall",
         ["variation"] = "brick"
@@ -165,10 +129,10 @@ return {
             name = "",
             type = "",
             shape = "rectangle",
-            x = 0,
+            x = 24,
             y = 0,
-            width = 16,
-            height = 64,
+            width = 8,
+            height = 32,
             rotation = 0,
             visible = true,
             properties = {}
@@ -177,9 +141,9 @@ return {
       }
     },
     {
-      id = 12,
+      id = 11,
       properties = {
-        ["position"] = "bottomLeft",
+        ["position"] = "left",
         ["type"] = "wall",
         ["variation"] = "brick"
       },
@@ -201,10 +165,10 @@ return {
             name = "",
             type = "",
             shape = "rectangle",
-            x = 48,
+            x = 0,
             y = 0,
-            width = 16,
-            height = 64,
+            width = 8,
+            height = 32,
             rotation = 0,
             visible = true,
             properties = {}
@@ -214,11 +178,6 @@ return {
     },
     {
       id = 13,
-      properties = {
-        ["position"] = "bottomRight",
-        ["type"] = "wall",
-        ["variation"] = "brick"
-      },
       objectGroup = {
         type = "objectgroup",
         draworder = "index",
@@ -239,8 +198,8 @@ return {
             shape = "rectangle",
             x = 0,
             y = 0,
-            width = 16,
-            height = 64,
+            width = 8,
+            height = 32,
             rotation = 0,
             visible = true,
             properties = {}

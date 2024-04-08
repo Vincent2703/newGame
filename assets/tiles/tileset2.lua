@@ -6,16 +6,16 @@ return {
   firstgid = 1,
   tilewidth = 32,
   tileheight = 32,
-  spacing = 0,
-  margin = 0,
+  spacing = 1,
+  margin = 1,
   columns = 5,
   image = "../../assets/textures/world/spritesheet.png",
-  imagewidth = 160,
-  imageheight = 96,
-  objectalignment = "unspecified",
+  imagewidth = 180,
+  imageheight = 110,
+  objectalignment = "topleft",
   tileoffset = {
-    x = 0,
-    y = 0
+    x = 1,
+    y = 1
   },
   grid = {
     orientation = "orthogonal",

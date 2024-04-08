@@ -345,25 +345,29 @@ function LightWorld:Update(dt)
 end
 
 function LightWorld:DrawShadows(Light)
-	-- Light object can be of type 'Light' or 'Star'
+
 end
 
 function LightWorld:DrawSprites(Light)
 	--CUSTOM
-	local x, y, _ = Light:GetPosition()
-	--local arc = math.abs(Light.Arc)
-	local angle = Light:GetAngle()
-	--local minAngle, maxAngle = angle-270, angle-90
-	local radius = Light.Radius
+	if Light.displayWalls and Light.player then --check if visible
+		local player = Light.player
+		local x, y, _ = Light:GetPosition()
+		--local arc = math.abs(Light.Arc)
+		local angle = Light:GetAngle()
+		local minAngle, maxAngle = angle-270, angle-90
+		local radius = Light.Radius
 
-	local items = lume.unique(level.bumpWorld:queryAngle(x, y, radius, 0, 360, 1, false))
+		local items = lume.unique(level.bumpWorld:queryAngle(x, y, radius, 0, 360, 2, player.insideRoom))
 
-	for _, item in ipairs(items) do
-		if item.obstacle then
-			if item.width < item.height then
-				love.graphics.rectangle("fill", item.x, item.y, item.width, item.height)
-			else
-				love.graphics.rectangle("fill", item.x, item.y-TILESIZE+1, item.width, TILESIZE)
+		for _, item in ipairs(items) do
+			if item.obstacle then
+				love.graphics.setLineWidth(1)
+				if item.width < item.height then --Murs sur les côtés
+					love.graphics.rectangle("fill", item.x, item.y, item.width, item.height)
+				else
+					love.graphics.rectangle("fill", item.x, item.y-TILESIZE+1, item.width, TILESIZE)
+				end
 			end
 		end
 	end
