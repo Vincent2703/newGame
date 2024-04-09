@@ -12,10 +12,10 @@ function InGame:update(dt)
             end
         end
     end
-    self.currentPlayer = getCurrentPlayer() --No need to check every frame...
+    self.currentPlayer = getCurrentPlayer() --No need to check every frame... Set it once when client is connected
     
     if input.state.changed then
-        client.client:send("playerInputs", input.state)
+        client.sock:send("playerInputs", input.state)
     end
 end
 

@@ -1,6 +1,9 @@
 Player = class("Player")
 
-function Player:init(x, y)
+function Player:init(x, y, connectId, peerId)
+    self.connectId = connectId
+    self.peerId = peerId
+    
     self.spritesheet = love.graphics.newImage("assets/textures/players/Character-Base.png")
     local spritesheetTileDim = 32
     self.spritesheetTileHalfDim = spritesheetTileDim/2

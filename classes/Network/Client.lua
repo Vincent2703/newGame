@@ -3,37 +3,42 @@ Client = class("Client")
 function Client:init()
     self.players = {}
 
-    self.client = sock.newClient("localhost", 270398) --rename to sock
+    self.sock = sock.newClient("localhost", 27039)
 
-    -- Called when a connection is made to the server
-    self.client:on("connect", function(data)
-        print("Client connected to the server.")
+    -- sock when a connection is made to the server
+    self.sock:on("connect", function(data)
+        print("Client connected to the server.") --Too soon to have a Player instance
     end)
     
     -- Called when the client disconnects from the server
-    self.client:on("disconnect", function(data)
+    self.sock:on("disconnect", function(data)
         print("Client disconnected from the server.")
     end)
 
     -- Custom callback, called whenever you send the event from the server
-    self.client:on("hello", function(msg)
+    self.sock:on("hello", function(msg)
         print("The server replied : " .. msg)
     end)
 
-    self.client:on("newPlayerConnected", function(player)
-        local deserializedPlayer = Player(player.x, player.y)
-        if player.id == self.client:getConnectId() then
-            deserializedPlayer.current = true
+    self.sock:on("updatePlayers", function(players)
+        for _, player in pairs(players) do
+            local deserializedPlayer = Player(player.x, player.y, player.connectId, player.peerId)
+            if player.connectId == self.sock:getConnectId() --[[and player.peerId == tostring(self.sock.connection)--]] then
+                deserializedPlayer.current = true
+            end
+            table.insert(self.players, deserializedPlayer)
         end
-        table.insert(self.players, deserializedPlayer)
-        print("Client : There is now "..#self.players.." connected player(s)" )
     end)
 
-    self.client:connect()
+    self.sock:on("newMap", function(map)
+        level = Level:load(map)
+    end)
 
-    print("Client : "..self.client:getAddress())
+    self.sock:connect()
+
+    print("Client : "..self.sock:getAddress())
 end
 
 function Client:update(dt)
-    self.client:update()
+    self.sock:update()
 end

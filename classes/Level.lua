@@ -3,12 +3,13 @@ Level = class("Level")
 function Level:init(width, height)
     self.bumpWorld = bump.newWorld(TILESIZE)
 
-    self.tileset = require("../assets/tiles/tileset")
+    self.tilesetPath = "../assets/tiles/tileset"
+    self.tileset = require(self.tilesetPath)
 
     self.width, self.height = width, height
 
     self.rooms = {
-        {
+       {
             x=22,
             y=4,
             w=3,
@@ -52,7 +53,7 @@ function Level:init(width, height)
         layers = {}
     }
 
-    self.layers = { --Layers
+    self.layers = { --Layers USEFUL TO HAVE SELF.LAYERS ? Can't do self.sti.layers if needed ?
         ground = self:addLayer(stiMap, "ground"),
         wallsTop = self:addLayer(stiMap, "wallsTop"),
         wallsBottom = self:addLayer(stiMap, "wallsBottom"),
@@ -70,14 +71,48 @@ function Level:init(width, height)
     self.wallTiles = {}
     for _, pos in ipairs({"front", "right", "left"}) do
         local tile = self:getTiles({position=pos}, allWallTiles)[1]
-        self.wallTiles[pos] = {id=tile.id+1, collider=tile.objectGroup.objects[1]}
+        self.wallTiles[pos] = {id=tile.id+1, collider=tile.objectGroup.objects[1]} --keep collider ?
     end
 
-    self:fillSTIMap(self.architecture)
+    self:fillSTIMap() --Rename to something else (createArchitecture() ?)
 
     self.sti = sti(stiMap)
 
     self:initLightWorld()
+end
+
+function Level:load(data)
+    local map = self:create()
+    map.width, map.height = data.width, data.height --remove ?
+    map.tileset = require(data.tilesetPath)
+    map.rooms = data.rooms
+
+    map.bumpWorld = bump.newWorld(TILESIZE)
+    for _, item in pairs(data.bumpItems) do
+        if item.obstacle then
+            map:addToBump({x=item.x, y=item.y, width=item.width, height=item.height, obstacle=true}, item.x, item.y, item.width, item.height)
+        end
+    end
+
+    local stiMap = { 
+        orientation = "orthogonal",
+        width = data.width,
+        height = data.height,
+        tilewidth = TILESIZE,
+        tileheight = TILESIZE,
+        tilesets = {map.tileset},
+        layers = {}
+    }
+
+    for _, layer in ipairs(data.stiLayers) do
+        self:addLayer(stiMap, layer.name, layer.data)
+    end
+
+    map.sti = sti(stiMap)
+
+    map:initLightWorld()
+
+    return map
 end
 
 
@@ -89,7 +124,7 @@ function Level:addRoom(rooms)
     local maxRoomSize = 8
 
     while currentTry < nbMaxTries do
-        local x, y, w, h = math.random(2, self.width), math.random(2, self.height), math.random(minRoomSize, maxRoomSize), math.random(minRoomSize, maxRoomSize)
+        local x, y, w, h = math.random(2, self.width), math.random(2, self.height), math.random(minRoomSize, maxRoomSize), math.random(minRoomSize, maxRoomSize) --should exclude x, y tried
 
         if x + w <= self.width and y + h <= self.height then
             local intersect = false
@@ -306,22 +341,22 @@ function Level:fillSTIMap()
         if wallsRight[topLeft] or room.x == 2 then
             wallsTop[topLeft] = wallTiles.front.id
             local x, y = (room.x-2)*TILESIZE, (room.y-1)*TILESIZE-1
-            self:addToBump({x=x, y=y, width=TILESIZE, tileHeight}, x, y, TILESIZE, tileHeight)
+            self:addToBump({x=x, y=y, width=TILESIZE, height=tileHeight}, x, y, TILESIZE, tileHeight) --height key missing
         end
         if wallsRight[bottomLeft] or room.x == 2 then
             wallsBottom[bottomLeft] = wallTiles.front.id
             local x, y = (room.x-2)*TILESIZE, (room.y+room.h-1)*TILESIZE-1
-            self:addToBump({x=x, y=y, width=TILESIZE, tileHeight}, x, y, TILESIZE, tileHeight)
+            self:addToBump({x=x, y=y, width=TILESIZE, height=tileHeight}, x, y, TILESIZE, tileHeight)
         end
         if wallsLeft[topRight] or room.x+room.w == self.width then
             wallsTop[topRight] = wallTiles.front.id
             local x, y = (room.x+room.w-1)*TILESIZE, (room.y-1)*TILESIZE-1
-            self:addToBump({x=x, y=y, width=TILESIZE, tileHeight}, x, y, TILESIZE, tileHeight)
+            self:addToBump({x=x, y=y, width=TILESIZE, height=tileHeight}, x, y, TILESIZE, tileHeight)
         end
         if wallsLeft[bottomRight] or room.x+room.w == self.width then
             wallsBottom[bottomRight] = wallTiles.front.id
             local x, y = (room.x+room.w-1)*TILESIZE, (room.y+room.h-1)*TILESIZE-1
-            self:addToBump({x=x, y=y, width=TILESIZE, tileHeight}, x, y, TILESIZE, tileHeight)
+            self:addToBump({x=x, y=y, width=TILESIZE, height=tileHeight}, x, y, TILESIZE, tileHeight)
         end
     end
     
@@ -340,13 +375,11 @@ function Level:addToBump(room, x, y, width, height)
     if width > height then
         height = 1
     end
-    self.bumpWorld:add({room=room, x=x, y=y, width=width, height=height, obstacle=true}, x, y, width, height)
+    self.bumpWorld:add({x=x, y=y, width=width, height=height, obstacle=true}, x, y, width, height)
 end
 
 function Level:initLightWorld()
     self.lightWorld = LightWorld:new()
-    --self.lightWorld:SetPosition(-20+halfWidthWindow, -20+halfHeightWindow)
-    --self.lightWorld.z = zoom
 
     local colliders = self.bumpWorld:getItems()
     for _, collider in pairs(colliders) do
@@ -382,21 +415,21 @@ function Level:getTiles(params, tiles)
 end
 
 
-function Level:addLayer(map, name)
+function Level:addLayer(map, name, data)
     local layer = {
         type = "tilelayer",
         name = name,
         x = 0,
         y = 0,
-        width = self.width,
-        height = self.height,
+        width = map.width,
+        height = map.height,
         visible = true,
         opacity = 1,
         offsetx = 0,
         offsety = 0,
         properties = {},
         encoding = "lua",
-        data = {}
+        data = data or {}
       }
 
       table.insert(map.layers, layer)
