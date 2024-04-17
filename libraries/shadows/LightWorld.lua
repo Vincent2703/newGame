@@ -358,7 +358,7 @@ function LightWorld:DrawSprites(Light)
 		local minAngle, maxAngle = angle-270, angle-90
 		local radius = Light.Radius
 
-		local items = lume.unique(level.bumpWorld:queryAngle(x, y, radius, 0, 360, 2, player.insideRoom))
+		local items = lume.unique(GameState:getState("InGame").map.bumpWorld:queryAngle(x, y, radius, 0, 360, 2, player.insideRoom))
 
 		for _, item in ipairs(items) do
 			if item.obstacle then

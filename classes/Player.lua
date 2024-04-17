@@ -57,13 +57,14 @@ function Player:init(x, y, connectId, peerId)
 
     self.insideRoom = nil
     self.lookingRoom = nil
-
-    self.body = Body:new(level.lightWorld)
+    
+    self.currentMap = GameState:getState("InGame").map
+    self.body = Body:new(self.currentMap.lightWorld)
     self:setPosition(x, y)
 
     self:createLights()
 
-    level.bumpWorld:add(self, self.x-8, self.y-8, 16, 16)
+    self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, 16, 16)
 end
 
 function Player:update(dt)
@@ -94,12 +95,12 @@ function Player:update(dt)
 
     local posX, posY = self.x+dx, self.y+dy
 
-    local actualX, actualY = level.bumpWorld:move(self, posX, posY)
+    local actualX, actualY = self.currentMap.bumpWorld:move(self, posX, posY)
     actualX = lume.round(actualX)
     actualY = lume.round(actualY)
 
     if self.x ~= actualX or self.y ~= actualY then
-        self.insideRoom = level:getRoomAtPos(actualX+8, actualY+8)
+        self.insideRoom = self.currentMap:getRoomAtPos(actualX+8, actualY+8)
     end
 
     self:setPosition(actualX, actualY)
@@ -141,8 +142,8 @@ end
 
 function Player:createLights()
     self.flashlightRadius = 140
-    self.flashlight = Light:new(level.lightWorld, self.flashlightRadius)
-    self.flashlight:GetTransform():SetParent(level.lightWorld:TrackBody(self.body))
+    self.flashlight = Light:new(self.currentMap.lightWorld, self.flashlightRadius)
+    self.flashlight:GetTransform():SetParent(self.currentMap.lightWorld:TrackBody(self.body))
     self.flashlight.Blur = true
     self.flashlight.player = self
     self.flashlight.GradientEffect = true
@@ -153,8 +154,8 @@ function Player:createLights()
 
     if self.current then
         self.haloLightRadius = self.flashlightRadius/2
-        self.haloLight = Light:new(level.lightWorld, self.haloLightRadius)
-        self.haloLight:GetTransform():SetParent(level.lightWorld:TrackBody(self.body))
+        self.haloLight = Light:new(self.currentMap.lightWorld, self.haloLightRadius)
+        self.haloLight:GetTransform():SetParent(self.currentMap.lightWorld:TrackBody(self.body))
         --self.haloLight.Blur = true
         self.haloLight.A = 100
         self.haloLight:SetAngle(180-self.angle)

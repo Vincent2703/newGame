@@ -9,6 +9,13 @@ function GameState:init()
     self.currentState = nil
 end
 
+function GameState:getState(name)
+    if self.states[name] then
+        return self.states[name]
+    end
+    return false
+end
+
 function GameState:setState(stateName, start)
     self.prevState = self:getCurrentStateClassName()
     self.currentState = self.states[stateName]

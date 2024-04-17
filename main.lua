@@ -13,10 +13,6 @@ function love.load()
 
     input = Input()  
 
-
-    --level = Level(25, 19) 
-    --player = Player(20, 20)
-
     GameState = GameState()
     GameState:setState("Home")
 
@@ -77,7 +73,7 @@ function loadClasses()
     require("classes/Network/Server")
     
     require("classes/Player")
-    require("classes/Level")
+    require("classes/Map")
 
     require("classes/GameState")
     require("classes/States/Home")
@@ -93,7 +89,6 @@ function initScreen()
     halfWidthWindow, halfHeightWindow = widthWindow/2, heightWindow/2
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    zoom = 5
+    zoom = 1--5
 
-    canvas = love.graphics.newCanvas()
 end

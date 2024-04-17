@@ -5,25 +5,25 @@ function InGame:init()
 end
 
 function InGame:update(dt)
-    local function getCurrentPlayer()
-        for _, player in pairs(client.players) do
-            if player.current then
-                return player
-            end
+    if self.map then --Map exists
+        self.map:update(dt)
+
+        if input.state.changed then
+            client.sock:send("playerInputs", input.state)
         end
-    end
-    self.currentPlayer = getCurrentPlayer() --No need to check every frame... Set it once when client is connected
-    
-    if input.state.changed then
-        client.sock:send("playerInputs", input.state)
     end
 end
 
 function InGame:draw()
-    if self.currentPlayer then
-        love.graphics.setCanvas(canvas)
-        level:draw()
+    if self.canvas and self.currentPlayer then
+        love.graphics.setCanvas(self.canvas)
+        self.map:draw()
         love.graphics.setCanvas()
-        love.graphics.draw(canvas, -self.currentPlayer.x*zoom+halfWidthWindow, -self.currentPlayer.y*zoom+halfHeightWindow, 0, zoom)
+        love.graphics.draw(self.canvas, -self.currentPlayer.x*zoom+halfWidthWindow, -self.currentPlayer.y*zoom+halfHeightWindow, 0, zoom)
     end
+end
+
+
+function InGame:createCanvas(width, height)
+    self.canvas = love.graphics.newCanvas(width, height)
 end

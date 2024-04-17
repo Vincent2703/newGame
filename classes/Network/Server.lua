@@ -5,18 +5,13 @@ function Server:init()
     self.players = {}
     self:startNewGame()
 
+    -- A connection is made to the server
     self.sock:on("connect", function(data, client)
-        print("Server : new client connected")
-
-        -- Send a message back to the connected client
-        local msg = "Hello from the server !"
-        client:send("hello", msg)
-
+        print("A new client is connected to the server.")
         self:newClient(client:getConnectId(), tostring(client.connection))
     end)
 
-    print("Server : "..self.sock:getAddress())
-
+    -- Input (keyboard/mouse) data received
     self.sock:on("playerInputs", function(data, client)
         --[[if data then
             print(data.mouse.x)
@@ -26,9 +21,10 @@ end
 
 function Server:update(dt)
     self.sock:update()
-    if #self.players > 0 and level then
-        level:update(dt)
+    if #self.players > 0 and map then
+        --map:update(dt)
         for _, player in pairs(self.players) do --check
+            print(_)
             player:update(dt)
         end
     end
@@ -36,75 +32,79 @@ end
 
 
 function Server:startNewGame()
-    level = Level(25, 19) --Should not be global
-    print("Server : New level")
-end
+    -- Create new map
+    local inGame = GameState:getState("InGame")
+    local mapWidth, mapHeight = 30, 30
+    inGame.map = Map(mapWidth, mapHeight)
+    inGame:createCanvas(mapWidth*TILESIZE, mapHeight*TILESIZE)
+    local map = inGame.map
 
-function Server:newClient(connectId, peerId)
-    -- Send the map to the new client if its not also the server
-    if client and client.sock:getConnectId() ~= connectId then
-            --SHOULD DO IT ONCE
-        --Bump items
-        local serializedBumpItems = {}
-        local bumpItems, _ = level.bumpWorld:getItems()
-        for _, item in pairs(bumpItems) do
-            table.insert(serializedBumpItems,
-                {
-                    x = item.x,
-                    y = item.y,
-                    width = item.width,
-                    height = item.height,
-                    obstacle = item.obstacle
-                }
-            )
-        end
-
-        --STI layers
-        local stiLayers = {}
-
-        for _, layer in ipairs(level.sti.layers) do
-            local newLayerData = {} 
-            for y=1, layer.height do --to fix x and y
-                for x=1, layer.width do
-                    if layer.data[y] and layer.data[y][x] then
-                        table.insert(newLayerData, layer.data[y][x].id+1)
-                    else
-                        table.insert(newLayerData, 0)
-                    end
-                end
-            end
-            table.insert(stiLayers, {name=layer.name, data=newLayerData})
-        end
-
-        local serializedMap = {
-            width = level.width,
-            height = level.height,
-            tilesetPath = level.tilesetPath,
-            bumpItems = serializedBumpItems,
-            rooms = level.rooms,
-            stiLayers = stiLayers,
-        }
-
-        local clientPeer = self.sock:getClientByConnectId(connectId).connection
-        self.sock:sendToPeer(clientPeer, "newMap", serializedMap)
+    -- Serialize it to send it to other players
+    --Bump items
+    local serializedBumpItems = {}
+    local bumpItems, _ = map.bumpWorld:getItems()
+    for _, item in pairs(bumpItems) do
+        table.insert(serializedBumpItems,
+            {
+                x = item.x,
+                y = item.y,
+                width = item.width,
+                height = item.height,
+                obstacle = item.obstacle
+            }
+        )
     end
 
-        -- Create a new player, update the players table and send it to all
-        local playerX, playerY = math.random(0, 40), math.random(0, 40)
-        local player = Player(playerX, playerY, connectId, peerId)
-        table.insert(self.players, player)
-    
-        local serializedPlayers = {}
-        for _, player in pairs(self.players) do
-            local serializedPlayer = {
-                x = player.x,
-                y = player.y,
-                connectId = player.connectId,
-                peerId = player.peerId
-            }
-            table.insert(serializedPlayers, serializedPlayer)
+    --STI layers
+    local stiLayers = {}
+
+    for _, layer in pairs(map.sti.layers) do
+        local newLayerData = {} 
+        for y=1, layer.height do
+            for x=1, layer.width do
+                local tile = layer.data[y] and layer.data[y][x]
+                table.insert(newLayerData, tile and tile.id + 1 or 0)
+            end
         end
-        self.sock:sendToAll("updatePlayers", serializedPlayers)
-    
-    
+        table.insert(stiLayers, {name=layer.name, data=newLayerData})
+    end
+
+    self.serializedMap = {
+        width = map.width,
+        height = map.height,
+        tilesetPath = map.tilesetPath,
+        bumpItems = serializedBumpItems,
+        rooms = map.rooms,
+        stiLayers = stiLayers,
+    }
+end
+
+
+
+function Server:newClient(connectId, peerId)
+    local inGame = GameState:getState("InGame")
+    local map = inGame.map
+
+    -- Send the map to the new client if it's not also the server
+    if client and client.sock:getConnectId() ~= connectId then
+        local clientPeer = self.sock:getClientByConnectId(connectId).connection
+        self.sock:sendToPeer(clientPeer, "newMap", self.serializedMap)
+    end
+
+    -- Create a new player, update the players table and send it to all
+    local playerX, playerY = map.spawnPoint.x*TILESIZE +math.random(-20, 20), map.spawnPoint.y*TILESIZE +math.random(-20, 20)
+    local player = Player(playerX, playerY, connectId, peerId)
+    table.insert(self.players, player)
+
+    local serializedPlayers = {}
+    for _, player in pairs(self.players) do
+        local serializedPlayer = {
+            x = player.x,
+            y = player.y,
+            connectId = player.connectId,
+            peerId = player.peerId
+        }
+        table.insert(serializedPlayers, serializedPlayer)
+    end
+    self.sock:sendToAll("playersList", serializedPlayers)    
 end

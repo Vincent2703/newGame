@@ -11,3 +11,13 @@ end
 function Utils:calcAngleBetw2Pts(pt1X, pt1Y, pt2X, pt2Y)
     return math.deg(math.atan2(pt2Y - pt1Y, pt2X - pt1X))+180 --use lume.angle ?
 end
+
+function Utils:tableFill(value, length)
+    if table.fill then
+        return table.fill(value, length)
+    else
+        local data = {defaultValue}
+        for i=1, length do data[i] = value end
+        return data
+    end
+end
