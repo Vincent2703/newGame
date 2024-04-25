@@ -1,7 +1,7 @@
 Map = class("Map")
 
 function Map:init(width, height)
-    self.tilesetPath = "../assets/tiles/tileset"
+    self.tilesetPath = "../assets/tiles/tileset2"
     self.tileset = require(self.tilesetPath)
 
     self.width, self.height = width, height
@@ -185,30 +185,32 @@ function Map:generateRooms(nbRooms, roomDimMin, roomDimMax)
     -- Add doors the architecture map 
     for _, room in ipairs(self.rooms) do
         local possibleDoors = {top={}, bottom={}, left={}, right={}}
-        for x=room.x, room.x+room.w-1 do --x=room.x+1, room.x+room.w-2
+
+        for x=room.x+1, room.x+room.w-2 do
             if room.y-1 > 0 then
                 if self.architecture[x][room.y-1] == 1 then
                     table.insert(possibleDoors.top, {x=x, y=room.y})
                 end
             end
-            if room.y+room.h+1 <= self.height then
+            if room.y+room.h+1 < self.height then
                 if self.architecture[x][room.y+room.h] == 1 then
                     table.insert(possibleDoors.bottom, {x=x, y=room.y+room.h-1})
                 end
             end
         end
-        for y=room.y, room.y+room.h-1 do --y=room.y+1, room.y+room.h-2
+        for y=room.y+1, room.y+room.h-2 do 
             if room.x-1 > 0 then
                 if self.architecture[room.x-1][y] == 1 then
                     table.insert(possibleDoors.left, {x=room.x, y=y})
                 end
             end
-            if room.x+room.w+1 <= self.width then
+            if room.x+room.w+1 < self.width then
                 if self.architecture[room.x+room.w][y] == 1 then
                     table.insert(possibleDoors.right, {x=room.x+room.w-1, y=y})
                 end
             end
         end
+
         local addedDoors = 0
         for _, posDoors in pairs(possibleDoors) do 
             if #posDoors > 1 and addedDoors < 2 then
@@ -246,9 +248,13 @@ function Map:generateSTIMap()
 
     local allWallTiles = self:getTiles({type="wall", variation="brick"})
     local wallTiles = {}
-    for _, pos in ipairs({"front", "right", "left"}) do
+    for _, pos in ipairs({"front", "right", "left", "bottomRightCorner", "bottomLeftCorner", "topRightCorner", "topLeftCorner", "insideRightCorner", "insideLeftCorner", "leftRightTop"}) do
         local tile = self:getTiles({position=pos}, allWallTiles)[1]
-        wallTiles[pos] = {id=tile.id+1, collider=tile.objectGroup.objects[1]} --keep collider ?
+        wallTiles[pos] = tile.id+1--{id=tile.id+1, collider=tile.objectGroup.objects[1]} --keep collider ?
+    end
+
+    local function tileIs(tile, a, b)
+        return tile == a or tile == b
     end
 
     for y=1, self.height do
@@ -262,7 +268,9 @@ function Map:generateSTIMap()
                 right = self.architecture[x+1] and self.architecture[x+1][y] or nil,
 
                 leftBottom = self.architecture[x-1] and self.architecture[x-1][y+1] or nil,
-                rightBottom = self.architecture[x+1] and self.architecture[x+1][y+1] or nil
+                rightBottom = self.architecture[x+1] and self.architecture[x+1][y+1] or nil,
+                rightTop = self.architecture[x+1] and self.architecture[x+1][y-1] or nil,
+                leftTop = self.architecture[x-1] and self.architecture[x-1][y-1] or nil,
             }
 
             -- Ground
@@ -275,71 +283,115 @@ function Map:generateSTIMap()
                 lGround[posTile] = greenGroundTileId
             end
 
-            -- left walls corridors test
+            -- Layers
             local lWLeft = layers.wallsLeft.data
             local lWRight = layers.wallsRight.data
             local lWTop = layers.wallsTop.data
             local lWBottom = layers.wallsBottom.data
 
+
             if tiles.current == 2 then
-                if (tiles.left == 1 or tiles.left == 0) and (tiles.bottom == 2 or tiles.bottom == 3) then
-                    lWLeft[posTile] = wallTiles.left.id
-                end
-                if (tiles.right == 1 or tiles.right == 0) and (tiles.bottom == 2 or tiles.bottom == 3) and (tiles.rightBottom == 0 or tiles.rightBottom == 1) then
-                    lWRight[posTile] = wallTiles.right.id
-                end
-                if tiles.bottom == 1 or tiles.bottom == 0 then
-                    lWBottom[posTile] = wallTiles.front.id
+                if tileIs(tiles.bottom, 2, 3) then
+                    if (tileIs(tiles.left, 0, 1) ) then
+                        lWLeft[posTile] = wallTiles.left
+                    end
+                    if (tileIs(tiles.right, 0, 1) ) then
+                        lWRight[posTile] = wallTiles.right
+                    end
+
+                    if tileIs(tiles.right, 0, 1) and tileIs(tiles.rightBottom, 2, 3) then
+                        lWRight[posTile] = wallTiles.insideRightCorner
+                    elseif tileIs(tiles.left, 0, 1) and tileIs(tiles.leftBottom, 2, 3) then
+                        lWLeft[posTile] = wallTiles.insideLeftCorner
+                    elseif tileIs(tiles.left, 2, 3) and tileIs(tiles.leftBottom, 0, 1) then
+                        lWBottom[posTile] = wallTiles.left
+                    elseif tileIs(tiles.right, 2, 3) and tileIs(tiles.rightBottom, 0, 1) then
+                        lWBottom[posTile] = wallTiles.right
+                    end
                 end
 
-                if tiles.left == 2 and tiles.bottom == 2 and (tiles.leftBottom == 0 or tiles.leftBottom == 1) then
-                    lWLeft[posTile] = wallTiles.left.id
-                end
-            elseif tiles.current == 1 then
-                if tiles.bottom == 2 then
-                    lWTop[posTile] = wallTiles.front.id
-                    if tiles.leftBottom == 0 or tiles.leftBottom == 1 and tiles.bottom == 0 then
-                        lWLeft[posTile] = wallTiles.left.id
+                if tileIs(tiles.bottom, 0, 1) or y==self.height then
+                    if tileIs(tiles.left, 2, 3) and tileIs(tiles.right, 2, 3) then
+                        lWBottom[posTile] = wallTiles.front
+                    else
+                        if tileIs(tiles.left, 0, 1) or x==1 then
+                            lWBottom[posTile] = wallTiles.bottomLeftCorner
+                        end
+                        if tileIs(tiles.right, 0, 1) or x==self.width then
+                            lWBottom[posTile] = wallTiles.bottomRightCorner
+                        end
                     end
-                    if tiles.rightBottom == 0 or tiles.rightBottom == 1 and tiles.bottom == 0 then
-                        lWRight[posTile] = wallTiles.right.id
-                    end
                 end
+                
             elseif tiles.current == 0 then
-                if tiles.bottom ~= 0 then
-                    lWTop[posTile] = wallTiles.front.id
+                if tiles.left == 1 then
+                    lWLeft[posTile] = wallTiles.left
                 end
-                if tiles.top == 1 then
-                    lWBottom[posTile] = wallTiles.front.id
+                if tiles.right == 1 then
+                    lWRight[posTile] = wallTiles.right
                 end
-                if tiles.right == 1 and tiles.bottom == 0 then
-                    lWRight[posTile] = wallTiles.right.id
+
+                if tiles.bottom == 1 then
+                    if x < self.width and x > 1 then 
+                        lWTop[posTile] = wallTiles.front
+                    else
+                        if x == 1 then
+                            lWTop[posTile] = wallTiles.topLeftCorner
+                        else --x==self.width
+                            lWTop[posTile] = wallTiles.topRightCorner
+                        end
+                    end
+                elseif tiles.bottom == 0 then
+                    if tiles.rightBottom == 1 and tiles.right == 0 then
+                        --lWTop[posTile] = wallTiles.insideRightCorner
+                    end
+                    if tiles.leftBottom == 1 and tiles.left == 0 then
+                        --lWTop[posTile] = wallTiles.insideLeftCorner
+                    end
                 end
-                if tiles.left == 1 and tiles.bottom == 0 then
-                    lWLeft[posTile] = wallTiles.left.id
+                
+
+            elseif tiles.current == 1 and tiles.bottom == 0 then
+                lWBottom[posTile] = wallTiles.front
+                
+                if tiles.rightBottom == 1 then
+                    lWBottom[posTile] = wallTiles.topRightCorner
+                elseif tiles.leftBottom == 1 then
+                    lWBottom[posTile] = wallTiles.topLeftCorner
+                end
+                if tiles.leftBottom == 1 and tiles.rightBottom == 1 and tiles.left == 1 and tiles.right == 1 then
+                    lWBottom[posTile] = wallTiles.leftRightTop
+                end
+            end
+            
+            if tileIs(tiles.current, 1, 0) then
+                if tiles.bottom == 2 then
+                    lWTop[posTile] = wallTiles.front
+                    if tileIs(tiles.leftBottom, 0, 1) then
+                        lWTop[posTile] = wallTiles.topLeftCorner
+                    elseif tileIs(tiles.rightBottom, 0, 1) then
+                        lWTop[posTile] = wallTiles.topRightCorner
+                    end
                 end
             end
 
-            --[[if tiles.current and tiles.current > 0 then
-                if y < self.height then
-                    if x==1 then
-                        lWLeft[posTile] = wallTiles.left.id
-                    elseif x==self.width then
-                        lWRight[posTile] = wallTiles.right.id
-                    end
+            if tileIs(tiles.current, 1, 2) then
+                if x == 1 then
+                    lWLeft[posTile] = wallTiles.left
+                elseif x == self.width then
+                    lWRight[posTile] = wallTiles.right
                 end
-                if y==1 then
-                    lWTop[posTile] = wallTiles.front.id
-                elseif y==self.height then
-                    lWBottom[posTile] = wallTiles.front.id
+                if y == 1 then
+                    lWTop[posTile] = wallTiles.front
+                elseif y == self.height then
+                    lWBottom[posTile] = wallTiles.front
                 end
-            end--]]
-
+            end
         end
-    end
+    end         
 
 
-    for _, layerName in ipairs({"ground", "wallsTop", "wallsBottom", "wallsLeft", "wallsRight"}) do
+    for _, layerName in ipairs({"ground", "wallsLeft", "wallsRight", "wallsTop", "wallsBottom"}) do
         table.insert(stiMap.layers, layers[layerName])
     end
 
@@ -354,7 +406,7 @@ function Map:loadSTIMap(data)
     map.rooms = data.rooms
     --map.layers = {}
 
-    map.bumpWorld = map:generateBumpWorld()
+    --map.bumpWorld = map:generateBumpWorld()
 
     local stiMap = { 
         orientation = "orthogonal",
@@ -366,7 +418,8 @@ function Map:loadSTIMap(data)
         layers = {}
     }
 
-    for _, layer in ipairs(data.stiLayers) do
+    for _, layer in pairs(data.stiLayers) do
+        print(layer.name)
         local newLayer = map:addLayer(layer.name, layer.data)
         --table.insert(map.layers, newLayer) --useful ?
         table.insert(stiMap.layers, newLayer)
@@ -418,6 +471,11 @@ function Map:getTiles(params, tiles)
     end)
 end
 
+--[[function Map:getTileById(id)
+    local tiles = self.tileset.tiles
+    return lume.match(tiles, function(item) return item.id==id-1 end)
+end--]]
+
 function Map:generateBumpWorld()
     local bumpWorld = bump.newWorld(TILESIZE)
 
@@ -434,27 +492,58 @@ function Map:generateBumpWorld()
         bumpWorld:add(border, border.x, border.y, border.w, border.h)
     end
 
+    for y=1, self.height do
+        for x=1, self.width do
+            for _, layerName in ipairs({"wallsLeft", "wallsRight", "wallsTop", "wallsBottom"}) do
+                local layerData = self.sti.layers[layerName].data
+                if layerData[y][x] and layerData[y][x].objectGroup then
+                    local objects = layerData[y][x].objectGroup.objects
+                    for _, object in ipairs(objects) do
+                        local collider = {
+                            x=(x-1)*TILESIZE+object.x,
+                            y=(y-1)*TILESIZE+object.y,
+                            w=object.width,
+                            h=object.height
+                        }
+                        bumpWorld:add(collider, collider.x, collider.y, collider.w, collider.h)
+                    end
+                end
+            end
+        end
+    end
+
     return bumpWorld
 end
 
 function Map:generateLightWorld()
     local lightWorld = LightWorld:new()
+    lightWorld:Resize(self.width*TILESIZE, self.height*TILESIZE)
 
-    --[[local colliders = self.bumpWorld:getItems()
+    local colliders = self.bumpWorld:getItems()
     for _, collider in pairs(colliders) do
-        local newBody = Body:new(self.lightWorld)
+        local newBody = Body:new(lightWorld)
         newBody:SetPosition(collider.x, collider.y, 2)
 
-        local width, height = collider.width, collider.height
+        local width, height = collider.w, collider.h
         if height > width then
             PolygonShadow:new(newBody, 0, 0, width, 0, width, height, 0, height) --left et right ok
         else
             PolygonShadow:new(newBody, 0, height, width, height, width, 0, 0, 0) --TL TR BR BL
         end
         
-    end--]]
+    end
 
     return lightWorld
+end
+
+function Map:getRoomAtPos(x, y)
+    for _, room in ipairs(self.rooms) do
+        if x >= (room.x-1)*TILESIZE and x <= (room.x+room.w-1)*TILESIZE and
+           y >= (room.y-1)*TILESIZE and y <= (room.y+room.h-1)*TILESIZE then
+                return room
+        end
+    end
+    return nil
 end
 
 
@@ -478,5 +567,5 @@ function Map:draw()
 
     end
     --love.graphics.origin()
-    --self.lightWorld:Draw()
+    self.lightWorld:Draw()
 end

@@ -350,7 +350,7 @@ end
 
 function LightWorld:DrawSprites(Light)
 	--CUSTOM
-	if Light.displayWalls and Light.player then --check if visible
+	--[[if Light.displayWalls and Light.player then --check if visible
 		local player = Light.player
 		local x, y, _ = Light:GetPosition()
 		--local arc = math.abs(Light.Arc)
@@ -370,7 +370,7 @@ function LightWorld:DrawSprites(Light)
 				end
 			end
 		end
-	end
+	end--]]
 end
 
 function LightWorld:ForceUpdate()

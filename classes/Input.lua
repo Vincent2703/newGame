@@ -59,19 +59,10 @@ function Input:update()
 	self.state.actions.left = love.keyboard.isDown(self.config.left)
 	self.state.actions.newPress.left = self.state.actions.left and not self.prevState.actions.left
 	
-	self.state.actions.pause = love.keyboard.isDown(self.config.pause) or self.phoneBackPressed
-	if self.phoneBackPressed then
-		self.phoneBackPressed = false
-	end
+	self.state.actions.pause = love.keyboard.isDown(self.config.pause) 
 	self.state.actions.newPress.pause = self.state.actions.pause and not self.prevState.actions.pause
+end
 
-	self.state.changed = 
-		self.state.actions.click or
-		self.state.actions.right or
-		self.state.actions.down or
-		self.state.actions.up or
-		self.state.actions.left or
-		self.state.actions.pause or
-		self.state.mouse.x ~= self.prevState.mouse.x or
-		self.state.mouse.y ~= self.prevState.mouse.y
+function love.keyreleased(key)
+	input.state.changed = true
 end

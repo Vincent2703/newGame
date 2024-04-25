@@ -1,13 +1,16 @@
 Player = class("Player")
 
-function Player:init(x, y, connectId, peerId)
+function Player:init(x, y, connectId, peerId, fromServer, current)
     self.connectId = connectId
     self.peerId = peerId
+
+    self.current = current or false
     
     self.spritesheet = love.graphics.newImage("assets/textures/players/Character-Base.png")
     local spritesheetTileDim = 32
     self.spritesheetTileHalfDim = spritesheetTileDim/2
     local grid = anim8.newGrid(spritesheetTileDim, spritesheetTileDim, self.spritesheet:getWidth(), self.spritesheet:getHeight())
+    self.w, self.h = 16, 16
 
     self.direction = "backward"
     self.status = "idle"
@@ -62,28 +65,35 @@ function Player:init(x, y, connectId, peerId)
     self.body = Body:new(self.currentMap.lightWorld)
     self:setPosition(x, y)
 
-    self:createLights()
+    if fromServer then
+        self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, self.w, self.h)
+    else
+        self:createLights()
+    end
 
-    self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, 16, 16)
+    self.input = input.state
 end
 
-function Player:update(dt)
+
+function Player:updateFromServer(dt)
+    local oldX, oldY, oldAngle, oldStatus = self.x, self.y, self.angle, self.status
+
     local dx, dy = 0, 0
     local velocity = self.velocity*dt
 
-    local angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, input.state.mouse.x, input.state.mouse.y)
+    self.angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, self.input.mouse.x, self.input.mouse.y) --use lume function
 
-    self.direction = self:getDirection(angle)
+    self.direction = self:getDirection(self.angle)
 
-    if input.state.actions.right then
+    if self.input.actions.right then
         dx = velocity
-    elseif input.state.actions.left then
+    elseif self.input.actions.left then
         dx = -velocity
     end
 
-    if input.state.actions.up then
+    if self.input.actions.up then
         dy = -velocity
-    elseif input.state.actions.down then
+    elseif self.input.actions.down then
         dy = velocity
     end
     
@@ -103,12 +113,21 @@ function Player:update(dt)
         self.insideRoom = self.currentMap:getRoomAtPos(actualX+8, actualY+8)
     end
 
-    self:setPosition(actualX, actualY)
+    self.x, self.y = actualX, actualY
 
-    self:setAngle(angle)
-
-    self:manageAnimations(dt)
+    self.changed = self.x ~= oldX or self.y ~= oldY or self.angle ~= oldAngle or self.status ~= oldStatus
 end
+
+function Player:updateFromClient(data)
+    self:setPosition(data.x, data.y)
+
+    self:setAngle(data.angle)
+    self.direction = data.direction
+
+    self.status = data.status
+    self.insideRoom = data.insideRoom
+end
+
 
 function Player:draw()
     self.currentAnimation:draw(self.spritesheet, self.x, self.y, 0, 1, 1, 8, 8)
@@ -157,7 +176,7 @@ function Player:createLights()
         self.haloLight = Light:new(self.currentMap.lightWorld, self.haloLightRadius)
         self.haloLight:GetTransform():SetParent(self.currentMap.lightWorld:TrackBody(self.body))
         --self.haloLight.Blur = true
-        self.haloLight.A = 100
+        self.haloLight.A = 150
         self.haloLight:SetAngle(180-self.angle)
     end
 

@@ -13,20 +13,33 @@ function Server:init()
 
     -- Input (keyboard/mouse) data received
     self.sock:on("playerInputs", function(data, client)
-        --[[if data then
-            print(data.mouse.x)
-        end--]]
+        if data then --?
+            self.players[client:getConnectId()].input = data --set input data
+        end
     end)
 end
 
 function Server:update(dt)
     self.sock:update()
-    if #self.players > 0 and map then
+    if self.gameStarted then
         --map:update(dt)
-        for _, player in pairs(self.players) do --check
-            print(_)
-            player:update(dt)
+        local serializedPlayers = {}
+        for _, player in pairs(self.players) do --check ipairs ?
+            player:updateFromServer(dt)
+            if player.changed then
+                local serializedPlayer = {
+                    x=player.x,
+                    y=player.y,
+                    angle=player.angle,
+                    direction=player.direction,
+                    status=player.status,
+                    insideRoom=player.insideRoom,
+                    connectId=player.connectId 
+                }
+                table.insert(serializedPlayers, serializedPlayer)
+            end
         end
+        self.sock:sendToAll("playersUpdate", serializedPlayers)
     end
 end
 
@@ -58,7 +71,7 @@ function Server:startNewGame()
     --STI layers
     local stiLayers = {}
 
-    for _, layer in pairs(map.sti.layers) do
+    for _, layer in ipairs(map.sti.layers) do
         local newLayerData = {} 
         for y=1, layer.height do
             for x=1, layer.width do
@@ -77,6 +90,8 @@ function Server:startNewGame()
         rooms = map.rooms,
         stiLayers = stiLayers,
     }
+
+    self.gameStarted = true
 end
 
 
@@ -93,11 +108,14 @@ function Server:newClient(connectId, peerId)
 
     -- Create a new player, update the players table and send it to all
     local playerX, playerY = map.spawnPoint.x*TILESIZE +math.random(-20, 20), map.spawnPoint.y*TILESIZE +math.random(-20, 20)
-    local player = Player(playerX, playerY, connectId, peerId)
-    table.insert(self.players, player)
+    local player = Player(playerX, playerY, connectId, peerId, true)
+
+    --self.players, par connectId
+    self.players[connectId] = player
+    --table.insert(self.players, player)
 
     local serializedPlayers = {}
-    for _, player in pairs(self.players) do
+    for connectId, player in pairs(self.players) do
         local serializedPlayer = {
             x = player.x,
             y = player.y,

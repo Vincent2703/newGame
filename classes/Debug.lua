@@ -29,16 +29,18 @@ function Debug:update()
     self.memory.avg = math.floor(self.memory.total / self.cycles)
 
     self.fps.current = math.floor(1.0/love.timer.getDelta())
-    if self.fps.current > self.fps.max and self.fps.current < 1000 then
+    if self.fps.current > self.fps.max and self.fps.current < 100 then
         self.fps.max = self.fps.current
     elseif self.fps.current < self.fps.min then
         self.fps.min = self.fps.current
     end
-    self.fps.total = self.fps.total + self.fps.current
+    if self.fps.current < 100 then
+        self.fps.total = self.fps.total + self.fps.current
+    end
     self.fps.avg = math.floor(self.fps.total / self.cycles)
 end
 
 function Debug:draw()
-    love.graphics.print(("FPS: %d  min: %d  max: %d  avg: %d"):format(self.fps.current, self.fps.min, self.fps.max, self.fps.avg), 10, 10)
+    love.graphics.print(("FPS: %d  min: %d avg: %d"):format(self.fps.current, self.fps.min, self.fps.avg), 10, 10)
     love.graphics.print(("Mem (Mo): %d  max: %d  avg: %d"):format(self.memory.current, self.memory.max, self.memory.avg), 10, 45)
 end

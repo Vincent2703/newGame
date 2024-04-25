@@ -11,7 +11,7 @@ return {
   columns = 5,
   image = "../../assets/textures/world/spritesheet.png",
   imagewidth = 180,
-  imageheight = 110,
+  imageheight = 133,
   objectalignment = "topleft",
   tileoffset = {
     x = 1,
@@ -24,7 +24,7 @@ return {
   },
   properties = {},
   wangsets = {},
-  tilecount = 15,
+  tilecount = 20,
   tiles = {
     {
       id = 0,
@@ -77,6 +77,46 @@ return {
       }
     },
     {
+      id = 3,
+      properties = {
+        ["position"] = "leftRightTop",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 0,
+            y = 24,
+            width = 32,
+            height = 8,
+            rotation = 0,
+            visible = true,
+            properties = {
+              ["position"] = "leftRightTop",
+              ["type"] = "wall",
+              ["variation"] = "brick"
+            }
+          }
+        }
+      }
+    },
+    {
       id = 4,
       properties = {
         ["type"] = "ground",
@@ -98,6 +138,78 @@ return {
       }
     },
     {
+      id = 7,
+      properties = {
+        ["position"] = "topLeftCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 0,
+            y = 24,
+            width = 32,
+            height = 8,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          }
+        }
+      }
+    },
+    {
+      id = 8,
+      properties = {
+        ["position"] = "topRightCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 0,
+            y = 24,
+            width = 32,
+            height = 8,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          }
+        }
+      }
+    },
+    {
       id = 9,
       properties = {
         ["type"] = "ground",
@@ -105,7 +217,105 @@ return {
       }
     },
     {
-      id = 10,
+      id = 12,
+      properties = {
+        ["position"] = "bottomLeftCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 0,
+            y = 0,
+            width = 8,
+            height = 32,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          },
+          {
+            id = 3,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 8,
+            y = 24,
+            width = 24,
+            height = 8,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          }
+        }
+      }
+    },
+    {
+      id = 13,
+      properties = {
+        ["position"] = "bottomRightCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 24,
+            y = 0,
+            width = 8,
+            height = 32,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          },
+          {
+            id = 2,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 0,
+            y = 24,
+            width = 24,
+            height = 8,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          }
+        }
+      }
+    },
+    {
+      id = 15,
       properties = {
         ["position"] = "right",
         ["type"] = "wall",
@@ -141,7 +351,7 @@ return {
       }
     },
     {
-      id = 11,
+      id = 16,
       properties = {
         ["position"] = "left",
         ["type"] = "wall",
@@ -177,7 +387,48 @@ return {
       }
     },
     {
-      id = 13,
+      id = 17,
+      properties = {
+        ["position"] = "insideRightCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
+      objectGroup = {
+        type = "objectgroup",
+        draworder = "index",
+        id = 2,
+        name = "",
+        visible = true,
+        opacity = 1,
+        offsetx = 0,
+        offsety = 0,
+        parallaxx = 1,
+        parallaxy = 1,
+        properties = {},
+        objects = {
+          {
+            id = 1,
+            name = "",
+            type = "",
+            shape = "rectangle",
+            x = 24,
+            y = 0,
+            width = 8,
+            height = 32,
+            rotation = 0,
+            visible = true,
+            properties = {}
+          }
+        }
+      }
+    },
+    {
+      id = 18,
+      properties = {
+        ["position"] = "insideLeftCorner",
+        ["type"] = "wall",
+        ["variation"] = "brick"
+      },
       objectGroup = {
         type = "objectgroup",
         draworder = "index",
