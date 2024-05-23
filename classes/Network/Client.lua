@@ -39,7 +39,7 @@ function Client:init()
     self.sock:on("playersUpdate", function(players)
         for _, serializedPlayer in pairs(players) do
             local player = self.players[serializedPlayer.connectId]
-            player:updateFromClient(serializedPlayer)
+            player:updateForClient(serializedPlayer)
         end
     end)
 

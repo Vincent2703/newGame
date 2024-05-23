@@ -14,6 +14,9 @@ function Input:init()
 	self.state.mouse = {
 						x = nil, 
 						y = nil, 
+						wheelmovedDy = 0,
+						wheelmovedUp = false,
+						wheelmovedDown = false,
 						}			
 
 	self.state.actions = {
@@ -41,7 +44,17 @@ function Input:update()
 
 	-- Mouse
 	local mouseX, mouseY = love.mouse.getPosition()
-	self.state.mouse = {x=mouseX, y=mouseY}
+	self.state.mouse.x = mouseX
+	self.state.mouse.y = mouseY
+
+	local dy = self.state.mouse.wheelmovedDy or 0
+	self.state.mouse.wheelmovedUp, self.state.mouse.wheelmovedDown = false, false
+	if dy > 0 then
+		self.state.mouse.wheelmovedUp = true
+	elseif dy < 0 then
+		self.state.mouse.wheelmovedDown = true
+	end
+	self.state.mouse.wheelmovedDy = 0 --TODO fix : can't get the value elsewhere
 	
 	self.state.actions.click = love.mouse.isDown(1, 2)
 	self.state.actions.newPress.click = self.state.actions.click and not self.prevState.actions.click
@@ -65,4 +78,8 @@ end
 
 function love.keyreleased(key)
 	input.state.changed = true
+end
+
+function love.wheelmoved(dx, dy)
+	input.state.mouse.wheelmovedDy = dy
 end

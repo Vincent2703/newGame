@@ -65,18 +65,30 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
     self.body = Body:new(self.currentMap.lightWorld)
     self:setPosition(x, y)
 
+    self.inventory = Inventory()
+
+    self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged
+        head = 2,
+        leftArm = 0,
+        rightArm = 1,
+        torso = 0,
+        leftLeg = 0,
+        rightLeg = 0
+    }
+
     if fromServer then
         self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, self.w, self.h)
     else
         self:createLights()
+        self.interface = Interface(self)
     end
 
     self.input = input.state
 end
 
 
-function Player:updateFromServer(dt)
-    local oldX, oldY, oldAngle, oldStatus = self.x, self.y, self.angle, self.status
+function Player:updateForServer(dt) --Client to server - before sending data
+    local prevX, prevY, prevAngle, prevStatus, prevSelectedSlotId = self.x, self.y, self.angle, self.status, self.inventory.selectedSlot.id
 
     local dx, dy = 0, 0
     local velocity = self.velocity*dt
@@ -115,10 +127,28 @@ function Player:updateFromServer(dt)
 
     self.x, self.y = actualX, actualY
 
-    self.changed = self.x ~= oldX or self.y ~= oldY or self.angle ~= oldAngle or self.status ~= oldStatus
+    --self.inventory:update()
+
+    local idSlot = prevSelectedSlotId
+    if self.input.mouse.wheelmovedUp then
+        if idSlot-1 == 0 then
+            idSlot = #self.inventory.slots
+        else
+            idSlot = idSlot-1
+        end
+    elseif self.input.mouse.wheelmovedDown then
+        if idSlot+1 > #self.inventory.slots then
+            idSlot = 1
+        else
+            idSlot = idSlot+1
+        end
+    end
+    self.inventory:setSelectedSlot(idSlot)
+
+    self.changed = self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.status ~= prevStatus or idSlot ~= prevSelectedSlotId
 end
 
-function Player:updateFromClient(data)
+function Player:updateForClient(data) --Server to client - after receiving data
     self:setPosition(data.x, data.y)
 
     self:setAngle(data.angle)
@@ -126,6 +156,9 @@ function Player:updateFromClient(data)
 
     self.status = data.status
     self.insideRoom = data.insideRoom
+
+    self.inventory.slots = data.inventory.slots
+    self.inventory:setSelectedSlot(data.inventory.selectedSlotId)
 end
 
 

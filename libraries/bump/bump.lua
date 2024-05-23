@@ -641,9 +641,7 @@ function World:queryAngle(x1, y1, radius, startAngle, endAngle, angleIncrement, 
           table.insert(items, item)
       end
     else -- Return only the first item intersecting the segment
-      if #itemsSegment == 2 then -- Why 2 ? è_é
-        --love.graphics.setColor(1, 0, 0, 1)
-        --love.graphics.line(x1, y1, itemsSegment[len].x, itemsSegment[len].y)
+      if #itemsSegment >= 2 then -- Why 2 ? è_é
         table.insert(items, itemsSegment[2])
       end
     end

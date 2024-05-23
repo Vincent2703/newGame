@@ -68,10 +68,14 @@ function loadClasses()
 
     require("classes/GUI/Button")
     require("classes/GUI/ButtonSubclasses/RectangleButton")
+    require("classes/GUI/InventoryGUI")
+    require("classes/GUI/BodyStatusGUI")
+    require("classes/GUI/Interface")
 
     require("classes/Network/Client")
     require("classes/Network/Server")
     
+    require("classes/Inventory")
     require("classes/Player")
     require("classes/Map")
 
@@ -89,6 +93,6 @@ function initScreen()
     halfWidthWindow, halfHeightWindow = widthWindow/2, heightWindow/2
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    zoom = 1--5
+    zoom = 5
 
 end

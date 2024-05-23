@@ -25,7 +25,7 @@ function Server:update(dt)
         --map:update(dt)
         local serializedPlayers = {}
         for _, player in pairs(self.players) do --check ipairs ?
-            player:updateFromServer(dt)
+            player:updateForServer(dt)
             if player.changed then
                 local serializedPlayer = {
                     x=player.x,
@@ -33,7 +33,8 @@ function Server:update(dt)
                     angle=player.angle,
                     direction=player.direction,
                     status=player.status,
-                    insideRoom=player.insideRoom,
+                    insideRoom=player.insideRoom, --useful ?
+                    inventory={slots=player.inventory.slots, selectedSlotId=player.inventory.selectedSlot.id},
                     connectId=player.connectId 
                 }
                 table.insert(serializedPlayers, serializedPlayer)

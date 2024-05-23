@@ -14,13 +14,13 @@ function Map:init(width, height)
     self:generateRooms(12, 4, 6)
 
     -- Print the architecture map DEBUG
-    for y = 1, self.height do
+    --[[for y = 1, self.height do
         local col = ''
         for x = 1, self.width do
             col = col .. self.architecture[x][y]
         end
         print(col)
-    end
+    end--]]
 
     self.sti = self:generateSTIMap()
 
@@ -43,8 +43,8 @@ function Map:roomOverlaps(x, y, w, h)
 end
 
 
-function Map:createArchitectureMap()
-    self.architecture = {}
+function Map:createArchitectureMap() --TODO : return
+    self.architecture = {} 
     -- Create and fill the architecture map with nothing
     for x = 1, self.width do
         self.architecture[x] = {}
@@ -106,7 +106,7 @@ function Map:generateCorridors(nbCorridors, corridorDimMin, corridorDimMax, widt
     end
 end
 
-function Map:generateRooms(nbRooms, roomDimMin, roomDimMax)
+function Map:generateRooms(nbRooms, roomDimMin, roomDimMax) -- TODO : return
     self.rooms = {}
     -- Create rooms
     for i = 1, nbRooms do
@@ -404,9 +404,6 @@ function Map:loadSTIMap(data)
     map.width, map.height = data.width, data.height
     map.tileset = require(data.tilesetPath)
     map.rooms = data.rooms
-    --map.layers = {}
-
-    --map.bumpWorld = map:generateBumpWorld()
 
     local stiMap = { 
         orientation = "orthogonal",
@@ -419,15 +416,15 @@ function Map:loadSTIMap(data)
     }
 
     for _, layer in pairs(data.stiLayers) do
-        print(layer.name)
+        --print(layer.name)
         local newLayer = map:addLayer(layer.name, layer.data)
-        --table.insert(map.layers, newLayer) --useful ?
         table.insert(stiMap.layers, newLayer)
     end
 
     map.sti = sti(stiMap)
 
-    map.lightWorld = self:generateLightWorld()
+    map.bumpWorld = map:generateBumpWorld()
+    map.lightWorld = map:generateLightWorld()
 
     return map
 end
@@ -503,7 +500,8 @@ function Map:generateBumpWorld()
                             x=(x-1)*TILESIZE+object.x,
                             y=(y-1)*TILESIZE+object.y,
                             w=object.width,
-                            h=object.height
+                            h=object.height,
+                            obstacle = true
                         }
                         bumpWorld:add(collider, collider.x, collider.y, collider.w, collider.h)
                     end
@@ -525,12 +523,7 @@ function Map:generateLightWorld()
         newBody:SetPosition(collider.x, collider.y, 2)
 
         local width, height = collider.w, collider.h
-        if height > width then
-            PolygonShadow:new(newBody, 0, 0, width, 0, width, height, 0, height) --left et right ok
-        else
-            PolygonShadow:new(newBody, 0, height, width, height, width, 0, 0, 0) --TL TR BR BL
-        end
-        
+        PolygonShadow:new(newBody, 1, 1, width+1, 1, width+1, height+1, 1, height+1)
     end
 
     return lightWorld
@@ -552,12 +545,13 @@ function Map:update(dt)
 end
 
 function Map:draw()
+    local currentPlayer = GameState:getState("InGame").currentPlayer
     for _, layer in ipairs(self.sti.layers) do
-        --[[if (player.insideRoom and layer.name == "wallsBottom") or not player.insideRoom and layer.name == "wallsTop" then
-            layer.opacity = 0.8
+        if (currentPlayer.insideRoom and layer.name == "wallsBottom") or not currentPlayer.insideRoom and layer.name == "wallsTop" then
+            layer.opacity = 0.65
         else
             layer.opacity = 1
-        end--]]
+        end
             self.sti:drawTileLayer(layer)
             if layer.name == "ground" then --check if visible before drawing the players and the rest
                 for _, player in pairs(client.players) do

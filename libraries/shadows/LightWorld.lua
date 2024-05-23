@@ -348,29 +348,45 @@ function LightWorld:DrawShadows(Light)
 
 end
 
-function LightWorld:DrawSprites(Light)
+function LightWorld:DrawSprites(Light)	
 	--CUSTOM
-	--[[if Light.displayWalls and Light.player then --check if visible
+
+	if Light.displayWalls and Light.player then --check if visible
+		local memoizedCosSin = lume.memoize(function(angle) -- TODO : Dans utils
+			return math.cos(math.rad(angle)), math.sin(math.rad(angle))
+		end)
+
 		local player = Light.player
-		local x, y, _ = Light:GetPosition()
-		--local arc = math.abs(Light.Arc)
+		local x1, y1, _ = Light:GetPosition()
 		local angle = Light:GetAngle()
-		local minAngle, maxAngle = angle-270, angle-90
+		local minAngle, maxAngle = angle-270, angle-90 --180 angle
 		local radius = Light.Radius
 
-		local items = lume.unique(GameState:getState("InGame").map.bumpWorld:queryAngle(x, y, radius, 0, 360, 2, player.insideRoom))
+		local angleIncrement = 0.5
 
-		for _, item in ipairs(items) do
-			if item.obstacle then
-				love.graphics.setLineWidth(1)
-				if item.width < item.height then --Murs sur les côtés
-					love.graphics.rectangle("fill", item.x, item.y, item.width, item.height)
-				else
-					love.graphics.rectangle("fill", item.x, item.y-TILESIZE+1, item.width, TILESIZE)
-				end
+		local displayedWalls = {}
+
+		for angle=minAngle, maxAngle, angleIncrement do
+			local dx, dy = memoizedCosSin(angle)
+			local x2, y2 = x1 + dx*radius, y1 + dy*radius
+		
+			local itemsSegment, len = GameState:getState("InGame").map.bumpWorld:querySegmentWithCoords(x1, y1, x2, y2, function(item) return item.obstacle end)
+
+			if len > 0 and itemsSegment[1].ti1 <= 0.8 then
+				table.insert(displayedWalls, itemsSegment[1].item)
 			end
 		end
-	end--]]
+
+		displayedWalls = lume.unique(displayedWalls)
+
+		for _, wall in ipairs(displayedWalls) do
+			if wall.w < wall.h then
+				love.graphics.rectangle("fill", wall.x+1, wall.y+1, wall.w-1, wall.h-1)
+			else
+				love.graphics.rectangle("fill", wall.x+1, wall.y-TILESIZE+wall.h+2, wall.w, TILESIZE-2)
+			end
+		end
+	end
 end
 
 function LightWorld:ForceUpdate()
