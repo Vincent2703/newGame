@@ -17,9 +17,15 @@ function Debug:init()
         total = 0,
         avg = 0
     }
+
+    self.visible = true
 end
 
 function Debug:update()
+    if input.state.actions.newPress.debug then
+        self.visible = not self.visible
+    end
+
     self.memory.current = math.floor(collectgarbage("count")/100)
     if self.memory.current > self.memory.max then
         self.memory.max = self.memory.current
@@ -41,6 +47,8 @@ function Debug:update()
 end
 
 function Debug:draw()
-    love.graphics.print(("FPS: %d  min: %d avg: %d"):format(self.fps.current, self.fps.min, self.fps.avg), 10, 10)
-    love.graphics.print(("Mem (Mo): %d  max: %d  avg: %d"):format(self.memory.current, self.memory.max, self.memory.avg), 10, 45)
+    if self.visible then
+        love.graphics.print(("FPS: %d  min: %d avg: %d"):format(self.fps.current, self.fps.min, self.fps.avg), 10, 10)
+        love.graphics.print(("Mem (Mo): %d  max: %d  avg: %d"):format(self.memory.current, self.memory.max, self.memory.avg), 10, 45)
+    end
 end

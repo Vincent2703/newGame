@@ -1,6 +1,18 @@
 InGame = class("InGame")
 
 function InGame:init()
+    -- Items creation
+    self.items = {
+        healthpotion = Consumable("Health potion", --TODO : make a function, key from name
+                        {filePath="assets/textures/items/potion.png", 
+                            sprites={ 
+                                { x=0, y=0, w=16, h=16, color={1, 1, 1} }, 
+                                { x=16, y=0, w=16, h=16, color={1, 0, 0.25} } 
+                            } 
+                        },
+                        function() self.currentPlayer:heal(1) end
+                    )
+    }
 end
 
 function InGame:update(dt)

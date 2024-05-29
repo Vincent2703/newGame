@@ -10,14 +10,20 @@ function Interface:init(player)
 
     self.opacity = 0
 
-    self.delay = 1
-    self.duration = 0.5
+    self.times = {
+        delay = 1.2,
+        duration = 0.5
+    }
+
+    self.delay = self.times.delay
+    self.duration = self.times.duration
 end
 
 function Interface:show()
     self.opacity = 1
-    self.delay = 1
-    self.duration = 0.5
+
+    self.delay = self.times.delay
+    self.duration = self.times.duration
 end
 
 
@@ -41,15 +47,17 @@ function Interface:update(dt)
 end
 
 function Interface:draw()
-    love.graphics.setCanvas(self.canvas)
-    love.graphics.clear()
+    if self.opacity > 0 then
+        love.graphics.setCanvas(self.canvas)
+        love.graphics.clear()
 
-    for _, gui in pairs(self.GUIItems) do
-        gui:draw()
+        for _, gui in pairs(self.GUIItems) do
+            gui:draw()
+        end
+        love.graphics.setCanvas()
+
+        love.graphics.setColor(1, 1, 1, self.opacity)
+        love.graphics.draw(self.canvas)
+        love.graphics.setColor(1, 1, 1, 1)
     end
-    love.graphics.setCanvas()
-
-    love.graphics.setColor(1, 1, 1, self.opacity)
-    love.graphics.draw(self.canvas)
-    love.graphics.setColor(1, 1, 1, 1)
 end

@@ -1,6 +1,6 @@
 CircleButton = Button:extend("CircleButton")
 
-function CircleButton:init(x, y, width, height, visible, content, colorA, colorB, background, callback, clickEvent)
+function CircleButton:init(x, y, width, height, visible, content, colorA, colorB, background, callback, clickEvent) --TODO : Replace by a table
     CircleButton.super.init(self,x, y, width, height, visible, content, colorA, colorB, background, callback, clickEvent)
     self.radius = math.min(self.width, self.height)/2
     self.centerX, self.centerY = x+self.radius, y+self.radius

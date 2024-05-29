@@ -24,11 +24,18 @@ function Map:init(width, height)
 
     self.sti = self:generateSTIMap()
 
-    -- BUMP
+    -- Collisions (BUMP)
     self.bumpWorld = self:generateBumpWorld()
 
-    -- Lightworld
+    -- Lights and shadows (Shadöws)
     self.lightWorld = self:generateLightWorld()
+
+    -- Interactive objects map
+    self.intObjectsMap = {}
+
+    table.insert(self.intObjectsMap
+        {object=GameState:getState("InGame").items.healthpotion, x=10, y=5}
+    )
 end
 
 function Map:roomOverlaps(x, y, w, h)
@@ -560,6 +567,11 @@ function Map:draw()
             end
 
     end
+
+    for _, object in ipairs(self.intObjectsMap) do
+        object:draw(object.x, object.y, 1)
+    end
+
     --love.graphics.origin()
     self.lightWorld:Draw()
 end

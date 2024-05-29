@@ -67,13 +67,15 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
 
     self.inventory = Inventory()
 
+    self.inventory:add(GameState:getState("InGame").items.healthpotion)
+
     self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged
-        head = 2,
-        leftArm = 0,
-        rightArm = 1,
-        torso = 0,
-        leftLeg = 0,
-        rightLeg = 0
+        head = {status = 2, effect = nil},
+        leftArm = {status = 0, effect = nil},
+        rightArm = {status = 1, effect = nil},
+        torso = {status = 0, effect = nil},
+        leftLeg = {status = 0, effect = nil},
+        rightLeg = {status = 0, effect = nil}
     }
 
     if fromServer then
@@ -127,23 +129,7 @@ function Player:updateForServer(dt) --Client to server - before sending data
 
     self.x, self.y = actualX, actualY
 
-    --self.inventory:update()
-
-    local idSlot = prevSelectedSlotId
-    if self.input.mouse.wheelmovedUp then
-        if idSlot-1 == 0 then
-            idSlot = #self.inventory.slots
-        else
-            idSlot = idSlot-1
-        end
-    elseif self.input.mouse.wheelmovedDown then
-        if idSlot+1 > #self.inventory.slots then
-            idSlot = 1
-        else
-            idSlot = idSlot+1
-        end
-    end
-    self.inventory:setSelectedSlot(idSlot)
+    self.inventory:update(self.input)
 
     self.changed = self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.status ~= prevStatus or idSlot ~= prevSelectedSlotId
 end
@@ -157,7 +143,18 @@ function Player:updateForClient(data) --Server to client - after receiving data
     self.status = data.status
     self.insideRoom = data.insideRoom
 
-    self.inventory.slots = data.inventory.slots
+    --[[for _, slot in ipairs(data.inventory.slots) do --Should be only when changes
+        self.inventory.slots[slot.id].item = GameState:getState("InGame").items[slot.itemName]
+    end--]]
+    for _, slot in ipairs(self.inventory.slots) do
+        local serverInvSlot = data.inventory.slots[slot.id]
+        local clientInvSlot = self.inventory.slots[slot.id]
+        if serverInvSlot then
+            clientInvSlot.item = GameState:getState("InGame").items[serverInvSlot]
+        else
+            clientInvSlot.item = nil
+        end
+    end
     self.inventory:setSelectedSlot(data.inventory.selectedSlotId)
 end
 
@@ -225,5 +222,14 @@ function Player:setAngle(angle)
     self.flashlight:SetAngle(self.angle)
     if self.current then
         self.haloLight:SetAngle(self.angle-180)
+    end
+end
+
+
+function Player:heal(qt)
+    local damagedBodyParts = lume.filter(self.bodyStatus, function(damagedPart) return damagedPart.status > 0 end)
+    if #damagedBodyParts > 0 then
+        local bodyPartToHeal = lume.randomchoice(damagedBodyParts)
+        bodyPartToHeal.status = bodyPartToHeal.status-1
     end
 end

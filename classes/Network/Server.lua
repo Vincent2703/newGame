@@ -27,6 +27,13 @@ function Server:update(dt)
         for _, player in pairs(self.players) do --check ipairs ?
             player:updateForServer(dt)
             if player.changed then
+                local serializedInventorySlots = {}
+                for _, slot in ipairs(player.inventory.slots) do
+                    if slot.item and slot.item:instanceOf(Item) then
+                        serializedInventorySlots[slot.id] = string.lower(string.gsub(slot.item.name, ' ', ''))
+                    end
+                end      
+
                 local serializedPlayer = {
                     x=player.x,
                     y=player.y,
@@ -34,7 +41,7 @@ function Server:update(dt)
                     direction=player.direction,
                     status=player.status,
                     insideRoom=player.insideRoom, --useful ?
-                    inventory={slots=player.inventory.slots, selectedSlotId=player.inventory.selectedSlot.id},
+                    inventory={slots=serializedInventorySlots, selectedSlotId=player.inventory.selectedSlot.id}, --TODO: only when changes ?
                     connectId=player.connectId 
                 }
                 table.insert(serializedPlayers, serializedPlayer)
@@ -90,6 +97,7 @@ function Server:startNewGame()
         bumpItems = serializedBumpItems,
         rooms = map.rooms,
         stiLayers = stiLayers,
+        --intobjects
     }
 
     self.gameStarted = true

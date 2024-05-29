@@ -76,6 +76,10 @@ function loadClasses()
     require("classes/Network/Server")
     
     require("classes/Inventory")
+
+    require("classes/Item")
+    require("classes/Items/Consumable")
+
     require("classes/Player")
     require("classes/Map")
 

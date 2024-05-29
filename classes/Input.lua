@@ -6,7 +6,10 @@ function Input:init()
 					down = "down",
 					up = "up",
 					left = "left",
+					action = "e",
+					throw = "t",
 					pause = "escape",
+					debug = "f1"
 				   }
 				   
 	self.state = {}
@@ -25,14 +28,18 @@ function Input:init()
 						up = false,
 						left = false,
 						click = false,
+						action = false,
+						throw = false,
 						pause = false,
+						debug = false,
 						newPress = {
 							right = false,
 							down = false,
                             up = false,
 							left = false,
 							click = false,
-							pause = false
+							pause = false,
+							debug = false
 							}
 						}
 				
@@ -40,7 +47,7 @@ function Input:init()
 end
 
 function Input:update()
-	self.prevState = lume.clone(self.state)
+	self.prevState = lume.deserialize(lume.serialize(self.state)) --Ensure deep copying (clone() doesn't work)
 
 	-- Mouse
 	local mouseX, mouseY = love.mouse.getPosition()
@@ -71,9 +78,18 @@ function Input:update()
 	
 	self.state.actions.left = love.keyboard.isDown(self.config.left)
 	self.state.actions.newPress.left = self.state.actions.left and not self.prevState.actions.left
+
+	self.state.actions.action = love.keyboard.isDown(self.config.action)
+	self.state.actions.newPress.action = self.state.actions.action and not self.prevState.actions.action
+
+	self.state.actions.throw = love.keyboard.isDown(self.config.throw)
+	self.state.actions.newPress.throw = self.state.actions.throw and not self.prevState.actions.throw
 	
 	self.state.actions.pause = love.keyboard.isDown(self.config.pause) 
 	self.state.actions.newPress.pause = self.state.actions.pause and not self.prevState.actions.pause
+
+	self.state.actions.debug = love.keyboard.isDown(self.config.debug) 
+	self.state.actions.newPress.debug = self.state.actions.debug and not self.prevState.actions.debug
 end
 
 function love.keyreleased(key)
