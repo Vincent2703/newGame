@@ -71,7 +71,7 @@ function Inventory:add(item)
         else
             print("No space left")
         end
-    end
+    end --else...
 end
 
 function Inventory:use(item)

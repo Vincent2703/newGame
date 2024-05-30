@@ -24,7 +24,7 @@ function Server:update(dt)
     if self.gameStarted then
         --map:update(dt)
         local serializedPlayers = {}
-        for _, player in pairs(self.players) do --check ipairs ?
+        for _, player in pairs(self.players) do 
             player:updateForServer(dt)
             if player.changed then
                 local serializedInventorySlots = {}
@@ -61,19 +61,20 @@ function Server:startNewGame()
     local map = inGame.map
 
     -- Serialize it to send it to other players
-    --Bump items
-    local serializedBumpItems = {}
+    --Walls (used to generate the LightWorld on the client side)
+    local walls = {}
     local bumpItems, _ = map.bumpWorld:getItems()
     for _, item in pairs(bumpItems) do
-        table.insert(serializedBumpItems,
-            {
-                x = item.x,
-                y = item.y,
-                width = item.width,
-                height = item.height,
-                obstacle = item.obstacle
-            }
-        )
+        if item.obstacle then
+            table.insert(walls,
+                {
+                    x = item.x,
+                    y = item.y,
+                    w = item.w,
+                    h = item.h,
+                }
+            )
+        end
     end
 
     --STI layers
@@ -90,14 +91,23 @@ function Server:startNewGame()
         table.insert(stiLayers, {name=layer.name, data=newLayerData})
     end
 
+    --Interactive objects
+    local intObj = {}
+    for _, item in ipairs(map.intObjectsMap) do
+        local type = item.object.className
+        local name = item.object.name
+        table.insert(intObj, {type=type, name=name, x=item.x, y=item.y})
+    end
+
     self.serializedMap = {
         width = map.width,
         height = map.height,
         tilesetPath = map.tilesetPath,
-        bumpItems = serializedBumpItems,
+        --bumpItems = serializedBumpItems, No use : server manages collisions
+        walls = walls,
         rooms = map.rooms,
         stiLayers = stiLayers,
-        --intobjects
+        interactiveObjects = intObj
     }
 
     self.gameStarted = true

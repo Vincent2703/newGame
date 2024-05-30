@@ -50,5 +50,9 @@ function Debug:draw()
     if self.visible then
         love.graphics.print(("FPS: %d  min: %d avg: %d"):format(self.fps.current, self.fps.min, self.fps.avg), 10, 10)
         love.graphics.print(("Mem (Mo): %d  max: %d  avg: %d"):format(self.memory.current, self.memory.max, self.memory.avg), 10, 45)
+        local currentPlayer = GameState:getState("InGame").currentPlayer
+        if currentPlayer then
+            love.graphics.print(("x: %d  y: %d"):format(currentPlayer.x, currentPlayer.y), 10, 80)
+        end
     end
 end

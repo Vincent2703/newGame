@@ -97,6 +97,6 @@ function initScreen()
     halfWidthWindow, halfHeightWindow = widthWindow/2, heightWindow/2
     love.graphics.setDefaultFilter("nearest", "nearest")
 
-    zoom = 5
+    zoom = 5 --Capitalize
 
 end

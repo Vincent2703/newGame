@@ -119,14 +119,33 @@ function Player:updateForServer(dt) --Client to server - before sending data
 
     local posX, posY = self.x+dx, self.y+dy
 
-    local actualX, actualY = self.currentMap.bumpWorld:move(self, posX, posY)
+    local actualX, actualY, cols, len = self.currentMap.bumpWorld:move(self, posX, posY,
+    function(player, otherItem) --manageCollisions()
+        if otherItem.obstacle then
+            return "slide"
+        elseif class.isInstance(otherItem) and otherItem:instanceOf(Item) then
+            return "cross"
+        end
+    end)
+
+    for i=1, len do
+        local item = cols[i].other
+        if item.obstacle then
+            print("obstacle")
+        elseif class.isInstance(item) and item:instanceOf(Item) then
+            print("item")
+            self.inventory:add(otherItem)
+        end
+    end
+
     actualX = lume.round(actualX)
     actualY = lume.round(actualY)
 
-    if self.x ~= actualX or self.y ~= actualY then
+    --[[if self.x ~= actualX or self.y ~= actualY then
         self.insideRoom = self.currentMap:getRoomAtPos(actualX+8, actualY+8)
-    end
+    end--]]
 
+    --self:setPosition(actualX, actualY)
     self.x, self.y = actualX, actualY
 
     self.inventory:update(self.input)

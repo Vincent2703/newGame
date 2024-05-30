@@ -12,12 +12,13 @@ function Item:init(name, spritesheet)
     end
 end
 
-function Item:draw(x, y, size)
-    local size = size or 3 
+function Item:draw(x, y, size) --remove size ?
+    local size = size or 1
     for _, sprite in ipairs(self.sprites) do
         love.graphics.setColor(sprite.color)
-        love.graphics.draw(self.image, sprite.quad, x, y, 0, size, 0)
+        love.graphics.draw(self.image, sprite.quad, x, y, 0, size)
     end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 

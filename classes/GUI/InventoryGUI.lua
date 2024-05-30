@@ -44,7 +44,7 @@ function InventoryGUI:draw()
         love.graphics.setColor(0, 0, 0, 0.5)
         love.graphics.rectangle("fill", x+1, height+1, dimSlot-2, dimSlot-2)
         if hasItem then
-            itemSlot:draw(x+1, height+1)
+            itemSlot:draw(x+1, height+1, 3)
         end
 
         if isSelectedSlot then

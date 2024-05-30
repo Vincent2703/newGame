@@ -40,6 +40,7 @@ function Client:init()
         for _, serializedPlayer in pairs(players) do
             local player = self.players[serializedPlayer.connectId]
             player:updateForClient(serializedPlayer)
+            --print(player.x, player.y)
         end
     end)
 

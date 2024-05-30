@@ -32,10 +32,16 @@ function Map:init(width, height)
 
     -- Interactive objects map
     self.intObjectsMap = {}
+    --self.intObjCanvas = love.graphics.newCanvas(self.width*TILESIZE*zoom, self.height*TILESIZE*zoom, { dpiscale = 1 })
 
-    table.insert(self.intObjectsMap
-        {object=GameState:getState("InGame").items.healthpotion, x=10, y=5}
+
+    table.insert(self.intObjectsMap,
+        {object=GameState:getState("InGame").items.healthpotion, x=10*TILESIZE, y=5*TILESIZE}
     )
+
+    for _, intObj in ipairs(self.intObjectsMap) do
+        self.bumpWorld:add(intObj.object, intObj.x, intObj.y, 5, 5)
+    end
 end
 
 function Map:roomOverlaps(x, y, w, h)
@@ -561,15 +567,20 @@ function Map:draw()
         end
             self.sti:drawTileLayer(layer)
             if layer.name == "ground" then --check if visible before drawing the players and the rest
+
+                love.graphics.setColor(1, 0, 0)
+                if self.intObjectsMap then
+                    for _, intObj in ipairs(self.intObjectsMap) do
+                        love.graphics.rectangle("fill", intObj.x, intObj.y, 5, 5)
+                    end
+                end
+                love.graphics.setColor(1, 1, 1)
+
                 for _, player in pairs(client.players) do
                     player:draw()
                 end
             end
 
-    end
-
-    for _, object in ipairs(self.intObjectsMap) do
-        object:draw(object.x, object.y, 1)
     end
 
     --love.graphics.origin()
