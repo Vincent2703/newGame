@@ -1,7 +1,11 @@
 Server = class("Server")
 
 function Server:init()
+    self.timeAccumulator = 0
+
     self.sock = sock.newServer("*", 27039)
+    self.sock:enableCompression()
+
     self.players = {}
     self:startNewGame()
 
@@ -11,44 +15,68 @@ function Server:init()
         self:newClient(client:getConnectId(), tostring(client.connection))
     end)
 
+    -- Sync the time between the server and the clients
+    self.sock:on("timeSyncRequest", function(clientTime, client)
+            local serverTime = love.timer.getTime()
+            --Send the server time and the original client send time back to the client
+            local clientPeer = self.sock:getClientByConnectId(client:getConnectId()).connection
+            self.sock:sendToPeer(clientPeer, "timeSyncResponse", {server=serverTime, client=clientTime})
+    end)
+
     -- Input (keyboard/mouse) data received
     self.sock:on("playerInputs", function(data, client)
-        if data then --?
-            self.players[client:getConnectId()].input = data --set input data
-        end
+        local player = self.players[client:getConnectId()]
+        player.input = data.inputs
+        player.lastRequestProcessedID = data.id
+        
+        player:serverUpdate()
     end)
 end
 
 function Server:update(dt)
-    self.sock:update()
     if self.gameStarted then
-        --map:update(dt)
-        local serializedPlayers = {}
-        for _, player in pairs(self.players) do 
-            player:updateForServer(dt)
-            if player.changed then
-                local serializedInventorySlots = {}
-                for _, slot in ipairs(player.inventory.slots) do
-                    if slot.item and slot.item:instanceOf(Item) then
-                        serializedInventorySlots[slot.id] = string.lower(string.gsub(slot.item.name, ' ', ''))
-                    end
-                end      
+        --self.timeAccumulator = self.timeAccumulator + dt
 
-                local serializedPlayer = {
-                    x=player.x,
-                    y=player.y,
-                    angle=player.angle,
-                    direction=player.direction,
-                    status=player.status,
-                    insideRoom=player.insideRoom, --useful ?
-                    inventory={slots=serializedInventorySlots, selectedSlotId=player.inventory.selectedSlot.id}, --TODO: only when changes ?
-                    connectId=player.connectId 
-                }
-                table.insert(serializedPlayers, serializedPlayer)
+        --while self.timeAccumulator >= FIXED_DT do
+            local serializedPlayers = {}
+            for _, player in pairs(self.players) do 
+                self.currentPlayer = player
+
+                if player.changed and player.lastRequestProcessedID then
+                    player.changed = false
+                    local serializedInventorySlots = {}
+                    for _, slot in ipairs(player.inventory.slots) do
+                        if slot.item and slot.item:instanceOf(Item) then
+                            serializedInventorySlots[slot.id] = string.lower(string.gsub(slot.item.name, ' ', ''))
+                        end
+                    end      
+
+                    local serializedPlayer = {
+                        x = player.x,
+                        y = player.y,
+                        bodyStatus = player.bodyStatus,
+                        angle = player.angle,
+                        animationStatus = player.animationStatus,
+                        inventory = serializedInventorySlots,
+                        connectId = player.connectId,
+                        lastRequestProcessedID = player.lastRequestProcessedID
+                    }
+
+                    table.insert(serializedPlayers, serializedPlayer)
+                end
             end
+            if #serializedPlayers > 0 then
+                local dataToSend = {timestamp=love.timer.getTime(), players=serializedPlayers}
+                self.sock:sendToAll("playersUpdate", dataToSend)
+            end
+
+            --self.timeAccumulator = self.timeAccumulator - FIXED_DT
         end
-        self.sock:sendToAll("playersUpdate", serializedPlayers)
-    end
+        --reset timeAccumulator to 0 ?
+    --end
+
+    self.sock:update()
+
 end
 
 
@@ -61,7 +89,7 @@ function Server:startNewGame()
     local map = inGame.map
 
     -- Serialize it to send it to other players
-    --Walls (used to generate the LightWorld on the client side)
+    --Walls (used to generate the LightWorld and the bumpWorld on the client side)
     local walls = {}
     local bumpItems, _ = map.bumpWorld:getItems()
     for _, item in pairs(bumpItems) do
@@ -103,7 +131,6 @@ function Server:startNewGame()
         width = map.width,
         height = map.height,
         tilesetPath = map.tilesetPath,
-        --bumpItems = serializedBumpItems, No use : server manages collisions
         walls = walls,
         rooms = map.rooms,
         stiLayers = stiLayers,

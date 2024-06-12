@@ -3,6 +3,8 @@ Interface = class("Interface")
 function Interface:init(player)
     self.canvas = love.graphics.newCanvas()
 
+    self.player = player
+
     self.GUIItems = {
         inventory = InventoryGUI(player.inventory),
         bodyStatus = BodyStatusGUI(player.bodyStatus)
@@ -40,6 +42,8 @@ function Interface:update(dt)
     if input.state.mouse.wheelmovedUp or input.state.mouse.wheelmovedDown then
         self:show()
     end
+
+    --self.GUIItems.bodyStatus.bodyStatus = self.player.bodyStatus
 
     --[[for _, gui in pairs(self.GUIItems) do
         gui:update(dt)

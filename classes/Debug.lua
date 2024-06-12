@@ -54,5 +54,9 @@ function Debug:draw()
         if currentPlayer then
             love.graphics.print(("x: %d  y: %d"):format(currentPlayer.x, currentPlayer.y), 10, 80)
         end
+
+        if client and client.latency then
+            love.graphics.print(("ping (ms): %d"):format(client.latency*1000), 10, 120)
+        end
     end
 end

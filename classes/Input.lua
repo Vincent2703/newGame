@@ -2,10 +2,10 @@ Input = class("Input")
 
 function Input:init()
 	self.config = {
-					right = "right",
-					down = "down",
-					up = "up",
-					left = "left",
+					right = "d",
+					down = "s",
+					up = "z",
+					left = "q",
 					action = "e",
 					throw = "t",
 					pause = "escape",
@@ -13,13 +13,15 @@ function Input:init()
 				   }
 				   
 	self.state = {}
-	self.state.changed = false
+	self.state.keyReleased = false
+	self.state.updated = false
 	self.state.mouse = {
 						x = nil, 
 						y = nil, 
 						wheelmovedDy = 0,
 						wheelmovedUp = false,
 						wheelmovedDown = false,
+						angle = 0
 						}			
 
 	self.state.actions = {
@@ -46,56 +48,68 @@ function Input:init()
 	self.prevState = self.state
 end
 
-function Input:update()
-	self.prevState = lume.deserialize(lume.serialize(self.state)) --Ensure deep copying (clone() doesn't work)
+function Input:update() --replace input. by self. ?
+	input.state.updated = false
+
+	input.prevState = lume.deserialize(lume.serialize(self.state)) --Ensure deep copying (clone() doesn't work)
 
 	-- Mouse
 	local mouseX, mouseY = love.mouse.getPosition()
-	self.state.mouse.x = mouseX
-	self.state.mouse.y = mouseY
+	input.state.mouse.x = mouseX
+	input.state.mouse.y = mouseY
 
-	local dy = self.state.mouse.wheelmovedDy or 0
-	self.state.mouse.wheelmovedUp, self.state.mouse.wheelmovedDown = false, false
-	if dy > 0 then
-		self.state.mouse.wheelmovedUp = true
-	elseif dy < 0 then
-		self.state.mouse.wheelmovedDown = true
+	local dy = input.state.mouse.wheelmovedDy or 0
+	if dy ~= 0 then
+		input.state.updated = true
 	end
-	self.state.mouse.wheelmovedDy = 0 --TODO fix : can't get the value elsewhere
-	
-	self.state.actions.click = love.mouse.isDown(1, 2)
-	self.state.actions.newPress.click = self.state.actions.click and not self.prevState.actions.click
+
+	input.state.mouse.wheelmovedUp, input.state.mouse.wheelmovedDown = false, false
+	if dy > 0 then
+		input.state.mouse.wheelmovedUp = true
+	elseif dy < 0 then
+		input.state.mouse.wheelmovedDown = true
+	end
+	input.state.mouse.wheelmovedDy = 0 --TODO fix : can't get the value elsewhere
+
+	local oldAngle = input.state.mouse.angle
+	input.state.mouse.angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, mouseX, mouseY) --Lume function
+	if oldAngle ~= input.state.mouse.angle then
+		input.state.updated = true
+	end
+
+	input.state.actions.click = love.mouse.isDown(1, 2)
+	input.state.actions.newPress.click = input.state.actions.click and not input.prevState.actions.click
+
+	if input.state.actions.click then
+		input.state.updated = true
+	end
 	
 	-- Keyboard
-	self.state.actions.right = love.keyboard.isDown(self.config.right)
-	self.state.actions.newPress.right = self.state.actions.right and not self.prevState.actions.right
-	
-	self.state.actions.down = love.keyboard.isDown(self.config.down)
-	self.state.actions.newPress.down = self.state.actions.down and not self.prevState.actions.down
+	for name, action in pairs(input.state.actions) do --filter table
+		if name ~= "newPress" and input.config[name] then
+			input.state.actions[name] = love.keyboard.isDown(input.config[name])
+			if input.state.actions[name] then
+				input.state.updated = true
+			end
+			input.state.actions.newPress[name] = input.state.actions[name] and not input.prevState.actions[name]
+		end
+	end
 
-	self.state.actions.up = love.keyboard.isDown(self.config.up)
-	self.state.actions.newPress.up = self.state.actions.up and not self.prevState.actions.up
-	
-	self.state.actions.left = love.keyboard.isDown(self.config.left)
-	self.state.actions.newPress.left = self.state.actions.left and not self.prevState.actions.left
-
-	self.state.actions.action = love.keyboard.isDown(self.config.action)
-	self.state.actions.newPress.action = self.state.actions.action and not self.prevState.actions.action
-
-	self.state.actions.throw = love.keyboard.isDown(self.config.throw)
-	self.state.actions.newPress.throw = self.state.actions.throw and not self.prevState.actions.throw
-	
-	self.state.actions.pause = love.keyboard.isDown(self.config.pause) 
-	self.state.actions.newPress.pause = self.state.actions.pause and not self.prevState.actions.pause
-
-	self.state.actions.debug = love.keyboard.isDown(self.config.debug) 
-	self.state.actions.newPress.debug = self.state.actions.debug and not self.prevState.actions.debug
-end
-
-function love.keyreleased(key)
-	input.state.changed = true
+	if input.state.keyReleased then
+		input.state.updated = true
+		input.state.keyReleased = false
+	end
 end
 
 function love.wheelmoved(dx, dy)
 	input.state.mouse.wheelmovedDy = dy
 end
+
+function love.keyreleased(key)
+	--input.state.updated = true --Sert à rien parce que exec avant update()
+	input.state.keyReleased = true
+end
+
+--[[function love.keypressed(key)
+	input.state.keyReleased = false
+end--]]

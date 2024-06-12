@@ -436,7 +436,13 @@ function Map:loadSTIMap(data)
 
     map.sti = sti(stiMap)
 
-    map.bumpWorld = map:generateBumpWorld()
+    --Bump
+    map.bumpWorld = bump.newWorld(TILESIZE)
+    for _, wall in ipairs(data.walls) do
+        wall.obstacle = true
+        map.bumpWorld:add(wall, wall.x, wall.y, wall.w, wall.h)
+    end
+    --Shadows
     map.lightWorld = map:generateLightWorld()
 
     return map
@@ -553,9 +559,9 @@ function Map:getRoomAtPos(x, y)
 end
 
 
-function Map:update(dt)
+--[[function Map:update(dt)
     self.lightWorld:Update(dt)
-end
+end--]]
 
 function Map:draw()
     local currentPlayer = GameState:getState("InGame").currentPlayer
@@ -584,5 +590,5 @@ function Map:draw()
     end
 
     --love.graphics.origin()
-    self.lightWorld:Draw()
+    --self.lightWorld:Draw()
 end

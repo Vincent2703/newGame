@@ -3,6 +3,8 @@ function love.load()
     math.randomseed(os.time() .. os.clock()) -- To pick different random values with math.random() at each execution
     TILESIZE = 32
 
+    FIXED_DT = 1/60 -- Client and server time for updating
+
     loadLibraries()
     loadClasses()
 
@@ -18,12 +20,11 @@ function love.load()
 
     if DEBUG then
         debug = Debug()
-    end
-    
+    end    
 end
 
 function love.update(dt)
-    input:update() --move to keypressed/mousemoved ?
+    input:update()
     GameState:update(dt)
     if server then
         server:update(dt)
@@ -35,6 +36,32 @@ function love.update(dt)
         debug:update()
     end
 end
+
+--[[
+     tickPeriod = 1/60
+    accumulator = 0
+end
+
+function love.update(dt)
+    accumulator = accumulator + dt
+    if accumulator >= tickPeriod then
+
+        input:update()
+        GameState:update(accumulator)
+        if server then
+            server:update(accumulator)
+        end
+        if client then
+            client:update(accumulator)
+        end
+        if DEBUG then
+            debug:update()
+        end
+
+        accumulator = 0
+    end
+end
+]]
 
 function love.draw()
     GameState:draw()

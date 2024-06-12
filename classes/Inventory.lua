@@ -27,7 +27,8 @@ function Inventory:init()
     self.selectedSlot = self.slots[1]
 end
 
-function Inventory:update(inputs)
+function Inventory:update()
+    local inputs = server.currentPlayer.input
     local idSlot = self.selectedSlot.id
     if inputs.mouse.wheelmovedUp then
         if idSlot-1 == 0 then
@@ -44,11 +45,10 @@ function Inventory:update(inputs)
     end
     self:setSelectedSlot(idSlot)
 
-    --if self.GUIVisible then
+    --if server.currentPlayer.interface.opacity > 0 then --Can't work because server update()
         if self.selectedSlot.item and self.selectedSlot.item:instanceOf(Item) then
             local item = self.selectedSlot.item
             if inputs.actions.newPress.action then
-                --Check item's type... or function action() for each type ?
                 item:use()
                 self:removeItemSlotId(self.selectedSlot.id)
             elseif inputs.actions.newPress.throw then

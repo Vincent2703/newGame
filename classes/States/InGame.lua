@@ -10,24 +10,22 @@ function InGame:init()
                                 { x=20, y=1, w=16, h=16, color={1, 0, 0.25} } 
                             } 
                         },
-                        function() self.currentPlayer:heal(1) end
+                        function() server.currentPlayer:heal(1) end
                     )
     }
 end
 
-function InGame:update(dt)
-    if self.map then --Map exists
-        self.map:update(dt)
+function InGame:update(dt) --Client side
+    if self.map and self.map.lightWorld then --Map exists
+        self.map.lightWorld:Update(dt)
 
-        if input.state.changed then
-            client.sock:send("playerInputs", input.state)
-        end
-
+        --TODO : move to function in Player
         for _, player in pairs(client.players) do
             player:manageAnimations(dt)
         end
 
         if self.currentPlayer then
+            --self.currentPlayer:smoothMove() --Interpolate at each frame
             self.currentPlayer.interface:update(dt)
         end
     end
