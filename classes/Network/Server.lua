@@ -28,6 +28,9 @@ function Server:init()
         local player = self.players[client:getConnectId()]
         player.input = data.inputs
         player.lastRequestProcessedID = data.id
+        if data.selectedSlotID then
+            player.inventory:setSelectedSlot(data.selectedSlotID)
+        end
         
         player:serverUpdate()
     end)
@@ -44,7 +47,7 @@ function Server:update(dt)
 
                 if player.changed and player.lastRequestProcessedID then
                     player.changed = false
-                    local serializedInventorySlots = {}
+                    local serializedInventorySlots = {} --function Inventory:serialize()
                     for _, slot in ipairs(player.inventory.slots) do
                         if slot.item and slot.item:instanceOf(Item) then
                             serializedInventorySlots[slot.id] = string.lower(string.gsub(slot.item.name, ' ', ''))

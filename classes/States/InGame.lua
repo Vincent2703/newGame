@@ -10,7 +10,7 @@ function InGame:init()
                                 { x=20, y=1, w=16, h=16, color={1, 0, 0.25} } 
                             } 
                         },
-                        function() server.currentPlayer:heal(1) end
+                        function() server.currentPlayer:heal(1); print("coucou") end
                     )
     }
 end

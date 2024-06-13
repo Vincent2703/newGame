@@ -91,7 +91,8 @@ function Client:update(dt)
         
         self.timeAccumulator = self.timeAccumulator + dt
         while self.timeAccumulator >= FIXED_DT do
-            GameState:getState("InGame").currentPlayer:clientUpdate(input.state)
+            local oldSelectedSlotID = currentPlayer.inventory.selectedSlot.id
+            currentPlayer:clientUpdate(input.state)
             if input.state.updated then
                 self.lastRequestID = self.lastRequestID +1
                 self.inputsNotServProcessed[self.lastRequestID] = {input = input.state, pos = {x=currentPlayer.x, y=currentPlayer.y}}
@@ -100,7 +101,15 @@ function Client:update(dt)
                     self.inputsNotServProcessed[self.lastRequestID-20] = nil
                 end
 
-                self.sock:send("playerInputs", {id=self.lastRequestID, inputs=input.state})
+                local dataToSend = {
+                    id = self.lastRequestID, 
+                    inputs = input.state
+                }
+                local newSelectedSlotID = currentPlayer.inventory.selectedSlot.id
+                if oldSelectedSlotID ~= newSelectedSlotID then
+                    dataToSend.selectedSlotID = newSelectedSlotID
+                end
+                self.sock:send("playerInputs", dataToSend)
             end
 
             self.timeAccumulator = self.timeAccumulator - FIXED_DT

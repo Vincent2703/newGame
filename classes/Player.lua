@@ -127,8 +127,6 @@ end
 
 function Player:applyServerResponse(player)
     if player.isCurrentPlayer then --If current player, do corrections
-        --print("reçu req n°"..player.lastRequestProcessedID.."/"..client.lastRequestID)
-
         local posSaved = client.inputsNotServProcessed[player.lastRequestProcessedID].pos --Get the old pos that corresponds with the response received
         if player.x ~= posSaved.x or player.y ~= posSaved.y then --Check if differents
             local newState = {x=player.x, y=player.y} --Create a new state and recalculate the pos with the new starting pos
@@ -139,12 +137,10 @@ function Player:applyServerResponse(player)
             end
             --Compare with current position
             if newState.x ~= self.goalX then
-                --print(newState.x, self.goalX)
                 self.goalX = newState.x
                 self.x = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
             end
             if newState.y ~= self.goalY then
-                --print(newState.y, self.goalY)
                 self.goalY = newState.y
                 self.y = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
             end
@@ -167,15 +163,13 @@ function Player:applyServerResponse(player)
     end
 
     if player.inventory then
-        if player.inventory.slots then
-            for _, slot in ipairs(self.inventory.slots) do
-                local serverInvSlot = player.inventory.slots[slot.id]
-                local clientInvSlot = self.inventory.slots[slot.id]
-                if serverInvSlot then
-                    clientInvSlot.item = GameState:getState("InGame").items[serverInvSlot]
-                else
-                    clientInvSlot.item = nil
-                end
+        for _, slot in ipairs(self.inventory.slots) do
+            local serverInvSlot = player.inventory[slot.id]
+            local clientInvSlot = self.inventory.slots[slot.id]
+            if serverInvSlot then
+                clientInvSlot.item = GameState:getState("InGame").items[serverInvSlot]
+            else
+                clientInvSlot.item = nil
             end
         end
 
@@ -209,17 +203,23 @@ function Player:serverUpdate()
 
     --Create a function
     local inputActions = self.input.actions
+
+    --print(inventory.selectedSlot.name, inventory.selectedSlot.item)
+
+    local inventoryUpdated = false
     if inventory.selectedSlot.item and inventory.selectedSlot.item:instanceOf(Item) then
-        local item = self.selectedSlot.item
+        local item = inventory.selectedSlot.item
         if inputActions.newPress.action then
             item:use()
-            inventory:removeItemSlotId(self.selectedSlot.id)
+            inventory:removeItemSlotId(inventory.selectedSlot.id)
+            inventoryUpdated = true
         elseif inputActions.newPress.throw then
-            inventory:removeItemSlotId(self.selectedSlot.id)
+            inventory:removeItemSlotId(inventory.selectedSlot.id)
+            inventoryUpdated = true
         end
     end
 
-    self.changed = self.input.keyReleased or self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.animationStatus ~= oldStatus
+    self.changed = self.input.keyReleased or self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.animationStatus ~= oldStatus or inventoryUpdated
 end
 
 function Player:getNewPos(input, startX, startY)
