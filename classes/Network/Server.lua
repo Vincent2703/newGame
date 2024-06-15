@@ -1,8 +1,6 @@
 Server = class("Server")
 
 function Server:init()
-    self.timeAccumulator = 0
-
     self.sock = sock.newServer("*", 27039)
     self.sock:enableCompression()
 
@@ -38,21 +36,18 @@ end
 
 function Server:update(dt)
     if self.gameStarted then
-        --self.timeAccumulator = self.timeAccumulator + dt
-
-        --while self.timeAccumulator >= FIXED_DT do
             local serializedPlayers = {}
             for _, player in pairs(self.players) do 
                 self.currentPlayer = player
 
                 if player.changed and player.lastRequestProcessedID then
                     player.changed = false
-                    local serializedInventorySlots = {} --function Inventory:serialize()
+                    local serializedInventory = {} --TODO : serialized function
                     for _, slot in ipairs(player.inventory.slots) do
-                        if slot.item and slot.item:instanceOf(Item) then
-                            serializedInventorySlots[slot.id] = string.lower(string.gsub(slot.item.name, ' ', ''))
+                        if slot.item ~= nil then
+                            table.insert(serializedInventory, {id=slot.id, itemName=slot.item.name})
                         end
-                    end      
+                    end  
 
                     local serializedPlayer = {
                         x = player.x,
@@ -60,7 +55,7 @@ function Server:update(dt)
                         bodyStatus = player.bodyStatus,
                         angle = player.angle,
                         animationStatus = player.animationStatus,
-                        inventory = serializedInventorySlots,
+                        inventory = serializedInventory,
                         connectId = player.connectId,
                         lastRequestProcessedID = player.lastRequestProcessedID
                     }
@@ -69,14 +64,19 @@ function Server:update(dt)
                 end
             end
             if #serializedPlayers > 0 then
-                local dataToSend = {timestamp=love.timer.getTime(), players=serializedPlayers}
-                self.sock:sendToAll("playersUpdate", dataToSend)
+                --local dataToSend = {timestamp=love.timer.getTime(), players=serializedPlayers} --Pas besoin de timestamp ? Calculer depuis le client le temps de réponse ?
+                self.sock:sendToAll("playersUpdate", serializedPlayers)
             end
 
-            --self.timeAccumulator = self.timeAccumulator - FIXED_DT
+            local map = GameState:getState("InGame").map
+            if map.itemsMapUpdated then
+                local serializedItemsMap = {}
+                for _, item in ipairs(map.itemsMap) do
+                    table.insert(serializedItemsMap, {name=item.instance.name, x=item.x, y=item.y})
+                end
+                self.sock:sendToAll("itemsMapUpdate", serializedItemsMap)
+            end
         end
-        --reset timeAccumulator to 0 ?
-    --end
 
     self.sock:update()
 
@@ -122,12 +122,11 @@ function Server:startNewGame()
         table.insert(stiLayers, {name=layer.name, data=newLayerData})
     end
 
-    --Interactive objects
-    local intObj = {}
-    for _, item in ipairs(map.intObjectsMap) do
-        local type = item.object.className
-        local name = item.object.name
-        table.insert(intObj, {type=type, name=name, x=item.x, y=item.y})
+    --Items
+    local items = {}
+    for _, item in ipairs(map.itemsMap) do
+        local name = item.instance.name
+        table.insert(items, {name=name, x=item.x, y=item.y})
     end
 
     self.serializedMap = {
@@ -137,7 +136,7 @@ function Server:startNewGame()
         walls = walls,
         rooms = map.rooms,
         stiLayers = stiLayers,
-        interactiveObjects = intObj
+        itemsMap = items
     }
 
     self.gameStarted = true
@@ -156,12 +155,19 @@ function Server:newClient(connectId, peerId)
     end
 
     -- Create a new player, update the players table and send it to all
-    local playerX, playerY = map.spawnPoint.x*TILESIZE +math.random(-20, 20), map.spawnPoint.y*TILESIZE +math.random(-20, 20)
+    local playerX, playerY = map.spawnPoint.x*TILESIZE + math.random(-20, 20), map.spawnPoint.y*TILESIZE + math.random(-20, 20)
     local player = Player(playerX, playerY, connectId, peerId, true)
+
+    -- Fill its inventory if necessary
+    local serializedInventory = {} --TODO : serialized function
+    for _, slot in ipairs(player.inventory.slots) do
+        if slot.item ~= nil then
+            table.insert(serializedInventory, {slotID=slot.id, itemName=slot.item.name})
+        end
+    end
 
     --self.players, par connectId
     self.players[connectId] = player
-    --table.insert(self.players, player)
 
     local serializedPlayers = {}
     for connectId, player in pairs(self.players) do
@@ -171,6 +177,9 @@ function Server:newClient(connectId, peerId)
             connectId = player.connectId,
             peerId = player.peerId
         }
+        if #serializedInventory > 0 then
+            serializedPlayer.inventory = serializedInventory
+        end
         table.insert(serializedPlayers, serializedPlayer)
     end
     self.sock:sendToAll("playersList", serializedPlayers)    

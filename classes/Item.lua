@@ -25,3 +25,11 @@ end
 function Item:delete()
     self = nil
 end
+
+function Item:getItemInTableByName(table, name)
+    for _, item in ipairs(table) do
+        if item.name == name then
+            return item
+        end
+    end
+end

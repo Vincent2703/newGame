@@ -31,16 +31,16 @@ function Map:init(width, height)
     self.lightWorld = self:generateLightWorld()
 
     -- Interactive objects map
-    self.intObjectsMap = {}
+    self.itemsMap = {}
     --self.intObjCanvas = love.graphics.newCanvas(self.width*TILESIZE*zoom, self.height*TILESIZE*zoom, { dpiscale = 1 })
 
 
-    table.insert(self.intObjectsMap,
-        {object=GameState:getState("InGame").items.healthpotion, x=10*TILESIZE, y=5*TILESIZE}
+    table.insert(self.itemsMap,
+        {instance=Item:getItemInTableByName(GameState:getState("InGame").items, "Health potion"), x=5*TILESIZE, y=5*TILESIZE}
     )
 
-    for _, intObj in ipairs(self.intObjectsMap) do
-        self.bumpWorld:add(intObj.object, intObj.x, intObj.y, 5, 5)
+    for _, item in ipairs(self.itemsMap) do
+        self.bumpWorld:add({instance=item.instance, x=item.x, y=item.y}, item.x, item.y, 5, 5)
     end
 end
 
@@ -436,6 +436,14 @@ function Map:loadSTIMap(data)
 
     map.sti = sti(stiMap)
 
+    --Items
+    map.itemsMap = {}
+    local itemsTable = GameState:getState("InGame").items
+    for _, itemSerialized in ipairs(data.itemsMap) do
+        local item = Item:getItemInTableByName(itemsTable, itemSerialized.name)
+        table.insert(map.itemsMap, {instance=map.itemsMap, x=itemSerialized.x, y=itemSerialized.y})
+    end
+
     --Bump
     map.bumpWorld = bump.newWorld(TILESIZE)
     for _, wall in ipairs(data.walls) do
@@ -559,6 +567,21 @@ function Map:getRoomAtPos(x, y)
 end
 
 
+function Map:removeItem(item) --item from bump
+    self.bumpWorld:remove(item)
+
+    for i, itemMap in ipairs(self.itemsMap) do
+        local instanceItemMap = itemMap.instance
+        local instanceItemBump = item.instance
+        if instanceItemBump.className == instanceItemMap.className and instanceItemBump.x == instanceItemMap.x and instanceItemBump.y == instanceItemMap.y then
+            table.remove(self.itemsMap, i)
+        end
+    end
+
+    self.itemsMapUpdated = true
+end
+
+
 --[[function Map:update(dt)
     self.lightWorld:Update(dt)
 end--]]
@@ -575,9 +598,9 @@ function Map:draw()
             if layer.name == "ground" then --check if visible before drawing the players and the rest
 
                 love.graphics.setColor(1, 0, 0)
-                if self.intObjectsMap then
-                    for _, intObj in ipairs(self.intObjectsMap) do
-                        love.graphics.rectangle("fill", intObj.x, intObj.y, 5, 5)
+                if self.itemsMap then
+                    for _, item in ipairs(self.itemsMap) do
+                        love.graphics.rectangle("fill", item.x, item.y, 5, 5)
                     end
                 end
                 love.graphics.setColor(1, 1, 1)

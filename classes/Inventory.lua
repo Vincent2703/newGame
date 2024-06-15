@@ -2,7 +2,7 @@ Inventory = class("Inventory")
 
 function Inventory:init()
     self.slots = { --TODO: put name as key
-        {   id   = 1, --TODO: auto ID ?
+        {   id   = 1,
             name = "hands",
             item = nil
         },
@@ -62,21 +62,22 @@ function Inventory:setSelectedSlot(id)
     self.selectedSlot = self.slots[id]
 end
 
-function Inventory:add(item)
+function Inventory:add(item, slotID)
     if item and item:instanceOf(Consumable) then
-        if self.slots[2].item == nil then
-            self.slots[2].item = item
-        elseif self.slots[3].item == nil then
-            self.slots[3].item = item
+        if slot and self.slots[slotID] == nil then
+            self.slots[slotID] = item
         else
-            print("No space left")
+            if self.slots[2].item == nil then
+                self.slots[2].item = item
+            elseif self.slots[3].item == nil then
+                self.slots[3].item = item
+            else
+                print("No space left")
+            end
         end
     end --else...
 end
 
-function Inventory:use(item)
-end
-
-function Inventory:removeItemSlotId(slotId)
-    self.slots[slotId].item = nil
+function Inventory:removeItemSlotId(slotID)
+    self.slots[slotID].item = nil
 end

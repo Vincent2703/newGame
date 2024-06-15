@@ -69,8 +69,6 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
 
     self.inventory = Inventory()
 
-    self.inventory:add(GameState:getState("InGame").items.healthpotion)
-
     self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged
         head = {status = 2, effect = nil},
         leftArm = {status = 0, effect = nil},
@@ -80,12 +78,14 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
         rightLeg = {status = 0, effect = nil}
     }
 
-    --if fromServer then
-        self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, self.w, self.h)
-    --else
+    self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, self.w, self.h)
+
+    if fromServer then
+        self.inventory:add(Item:getItemInTableByName(GameState:getState("InGame").items, "Health potion"))
+    else
         self:createLights()
         self.interface = Interface(self)
-    --end
+    end
 
     self.input = input.state
 
@@ -95,8 +95,8 @@ end
 
 
 
-function Player:clientUpdate(dataInput)
-    local inputState = dataInput or input.state --To rename 
+function Player:clientUpdate()
+    local inputState = input.state --To rename 
     local newPos = self:getNewPos(inputState)
 
     --setPos()
@@ -109,20 +109,27 @@ function Player:clientUpdate(dataInput)
     --Inventory TODO : recreate update function
     local inventory = self.inventory
     local idSlot = inventory.selectedSlot.id
-    if inputState.mouse.wheelmovedUp then
+    local wheelUp, wheelDown = inputState.mouse.wheelmovedUp, inputState.mouse.wheelmovedDown
+
+    --print("a: "..self.inventory.selectedSlot.id)
+    if wheelDown then
         if idSlot-1 == 0 then
             idSlot = #inventory.slots
         else
             idSlot = idSlot-1
         end
-    elseif inputState.mouse.wheelmovedDown then
+    elseif wheelUp then
         if idSlot+1 > #inventory.slots then
             idSlot = 1
         else
             idSlot = idSlot+1
         end
     end
-    self.inventory:setSelectedSlot(idSlot)
+    --print("b: "..self.inventory.selectedSlot.id)
+    if wheelUp or wheelDown then
+        self.inventory:setSelectedSlot(idSlot)
+    end
+    --print("c: "..self.inventory.selectedSlot.id)
 end
 
 function Player:applyServerResponse(player)
@@ -162,17 +169,13 @@ function Player:applyServerResponse(player)
         self.direction = self:getDirection(player.angle)
     end
 
-    if player.inventory then
-        for _, slot in ipairs(self.inventory.slots) do
-            local serverInvSlot = player.inventory[slot.id]
-            local clientInvSlot = self.inventory.slots[slot.id]
-            if serverInvSlot then
-                clientInvSlot.item = GameState:getState("InGame").items[serverInvSlot]
-            else
-                clientInvSlot.item = nil
-            end
-        end
-
+    local itemsTable = GameState:getState("InGame").items
+    for _, slot in ipairs(self.inventory.slots) do
+        slot.item = nil
+    end
+    for _, slot in ipairs(player.inventory) do
+        local item = Item:getItemInTableByName(itemsTable, slot.itemName)
+        self.inventory:add(item, slot.id)
     end
 
     if player.bodyStatus then
@@ -195,22 +198,21 @@ function Player:serverUpdate()
 
     local inventory = self.inventory
     for _, col in ipairs(newPos.collisions) do
-        local item = col.other
-        if class.isInstance(item) and item:instanceOf(Item) then
-            inventory:add(item)
+        local obj = col.other.instance
+        if obj and class.isInstance(obj) and obj:instanceOf(Item) then
+            inventory:add(obj)
+            self.currentMap:removeItem(col.other)
         end
     end
 
     --Create a function
     local inputActions = self.input.actions
 
-    --print(inventory.selectedSlot.name, inventory.selectedSlot.item)
-
     local inventoryUpdated = false
     if inventory.selectedSlot.item and inventory.selectedSlot.item:instanceOf(Item) then
         local item = inventory.selectedSlot.item
         if inputActions.newPress.action then
-            item:use()
+            item:use(self)
             inventory:removeItemSlotId(inventory.selectedSlot.id)
             inventoryUpdated = true
         elseif inputActions.newPress.throw then
@@ -241,10 +243,10 @@ function Player:getNewPos(input, startX, startY)
     local posX, posY = lume.round(x+dx, 0.1), lume.round(y+dy, 0.1)
 
     local actualX, actualY, cols = self.currentMap.bumpWorld:move(self, posX, posY,
-    function(player, otherItem) --manageCollisions()
-        if otherItem.obstacle then
+    function(player, other) --manageCollisions()
+        if other.obstacle then
             return "slide"
-        elseif class.isInstance(otherItem) and otherItem:instanceOf(Item) then
+        elseif other.instance and class.isInstance(other.instance) and other.instance:instanceOf(Item) then
             return "cross"
         end
     end)

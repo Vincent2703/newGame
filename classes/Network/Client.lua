@@ -41,12 +41,18 @@ function Client:init()
 
     -- Update the list of players
     self.sock:on("playersList", function(players)
+        local inGameState = GameState:getState("InGame")
         for _, player in ipairs(players) do --check ipairs
             if not self.players[player.connectId] then
                 local isCurrentPlayer = player.connectId == self.sock:getConnectId()
                 local deserializedPlayer = Player(player.x, player.y, player.connectId, player.peerId, false, isCurrentPlayer)
                 if isCurrentPlayer --[[and player.peerId == tostring(self.sock.connection)--]] then 
-                    GameState:getState("InGame").currentPlayer = deserializedPlayer --To know which player the client is
+                    if player.inventory then
+                        for _, item in ipairs(player.inventory) do
+                            deserializedPlayer.inventory:add(Item:getItemInTableByName(inGameState.items, item.itemName), item.slotID)
+                        end
+                    end
+                    inGameState.currentPlayer = deserializedPlayer --To know which player the client is
                 end
                 self.players[deserializedPlayer.connectId] = deserializedPlayer
             end
@@ -60,9 +66,9 @@ function Client:init()
         inGame:createCanvas(map.width*TILESIZE, map.height*TILESIZE)
     end)
 
-    self.sock:on("playersUpdate", function(data)
-        self:receivePong(data.timestamp)
-        for _, serializedPlayer in pairs(data.players) do
+    self.sock:on("playersUpdate", function(players)
+        --self:receivePong(data.timestamp)
+        for _, serializedPlayer in ipairs(players) do
             local connectID = serializedPlayer.connectId
             local player = self.players[connectID]
             local isCurrentPlayer = connectID == self.sock:getConnectId()
@@ -75,24 +81,36 @@ function Client:init()
         end
     end)
 
+    self.sock:on("itemsMapUpdate", function(items)
+        local inGameState = GameState:getState("InGame")
+        local allItems = inGameState.items --Table with all items
+        local itemsMap = inGameState.map.itemsMap --Table with items on the map
+        
+        inGameState.map.itemsMap = {}
+        for _, serializedItem in ipairs(items) do
+            local item = Item:getItemInTableByName(allItems, serializedItem.name)
+            table.insert(itemsMap, {instance=item, x=serializedItem.x, y=serializedItem.y})
+        end
+    end)
+
     self.sock:connect()
 
     self.timeLastUpdate = 0
 end
 
 function Client:update(dt)
-    local currentPlayer = GameState:getState("InGame").currentPlayer
+    local currentPlayer = GameState:getState("InGame").currentPlayer --attr ?
     if currentPlayer then --TODO : create & use gameStarted
-        if input.state.updated then
+        --if input.state.updated then
             --self.sock:setSendMode("reliable")
             --self:sendPing() --if debug true
             --self.sock:send("playerInputs", {id=self.lastRequestID, inputs=input.state})
-        end
+        --end
         
         self.timeAccumulator = self.timeAccumulator + dt
         while self.timeAccumulator >= FIXED_DT do
             local oldSelectedSlotID = currentPlayer.inventory.selectedSlot.id
-            currentPlayer:clientUpdate(input.state)
+            currentPlayer:clientUpdate()
             if input.state.updated then
                 self.lastRequestID = self.lastRequestID +1
                 self.inputsNotServProcessed[self.lastRequestID] = {input = input.state, pos = {x=currentPlayer.x, y=currentPlayer.y}}

@@ -6,7 +6,7 @@ function Consumable:init(name, spritesheet, effectCallback)
     self.effectCallback = effectCallback
 end
 
-function Consumable:use()
-    self.effectCallback()
+function Consumable:use(player) --Use on player
+    self.effectCallback(player)
     self:delete()
 end
