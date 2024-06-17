@@ -10,7 +10,7 @@ function Server:init()
     -- A connection is made to the server
     self.sock:on("connect", function(data, client)
         print("A new client is connected to the server.")
-        self:newClient(client:getConnectId(), tostring(client.connection))
+        self:newClient(client, client.connection)
     end)
 
     -- Sync the time between the server and the clients
@@ -38,8 +38,6 @@ function Server:update(dt)
     if self.gameStarted then
             local serializedPlayers = {}
             for _, player in pairs(self.players) do 
-                self.currentPlayer = player
-
                 if player.changed and player.lastRequestProcessedID then
                     player.changed = false
                     local serializedInventory = {} --TODO : serialized function
@@ -144,19 +142,20 @@ end
 
 
 
-function Server:newClient(connectId, peerId)
+function Server:newClient(newClient, newClientPeer)
     local inGame = GameState:getState("InGame")
     local map = inGame.map
 
+    local newClientConnectId = newClient:getConnectId()
+
     -- Send the map to the new client if it's not also the server
-    if client and client.sock:getConnectId() ~= connectId then
-        local clientPeer = self.sock:getClientByConnectId(connectId).connection
-        self.sock:sendToPeer(clientPeer, "newMap", self.serializedMap)
+    if client and client.sock:getConnectId() ~= newClientConnectId then
+        self.sock:sendToPeer(newClientPeer, "newMap", self.serializedMap)
     end
 
-    -- Create a new player, update the players table and send it to all
+    -- Create a new player
     local playerX, playerY = map.spawnPoint.x*TILESIZE + math.random(-20, 20), map.spawnPoint.y*TILESIZE + math.random(-20, 20)
-    local player = Player(playerX, playerY, connectId, peerId, true)
+    local player = Player(playerX, playerY, newClientConnectId, true)
 
     -- Fill its inventory if necessary
     local serializedInventory = {} --TODO : serialized function
@@ -166,21 +165,31 @@ function Server:newClient(connectId, peerId)
         end
     end
 
-    --self.players, par connectId
-    self.players[connectId] = player
+    -- Update the players table
+    self.players[newClientConnectId] = player
 
+    -- Serialize the players
     local serializedPlayers = {}
+    local newClientSerializedPlayer --To easily get the new player
     for connectId, player in pairs(self.players) do
         local serializedPlayer = {
             x = player.x,
             y = player.y,
+            angle = player.angle,
+            direction = player.direction,
+            animationStatus = player.animationStatus,
             connectId = player.connectId,
-            peerId = player.peerId
         }
+        if newClientConnectId == player.connectId then
+            newClientSerializedPlayer = serializedPlayer
+        end
+
         if #serializedInventory > 0 then
-            serializedPlayer.inventory = serializedInventory
+            serializedPlayer.inventory = serializedInventory --Send the inventory only if not empty
         end
         table.insert(serializedPlayers, serializedPlayer)
     end
-    self.sock:sendToAll("playersList", serializedPlayers)    
+
+    self.sock:sendToPeer(newClientPeer, "playersUpdate", serializedPlayers) --Send all players to the new player
+    self.sock:sendToAllBut(newClient, "playersUpdate", {newClientSerializedPlayer}) --Send only the new player to all other players
 end

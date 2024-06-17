@@ -39,26 +39,6 @@ function Client:init()
         print("Client disconnected from the server.")
     end)
 
-    -- Update the list of players
-    self.sock:on("playersList", function(players)
-        local inGameState = GameState:getState("InGame")
-        for _, player in ipairs(players) do --check ipairs
-            if not self.players[player.connectId] then
-                local isCurrentPlayer = player.connectId == self.sock:getConnectId()
-                local deserializedPlayer = Player(player.x, player.y, player.connectId, player.peerId, false, isCurrentPlayer)
-                if isCurrentPlayer --[[and player.peerId == tostring(self.sock.connection)--]] then 
-                    if player.inventory then
-                        for _, item in ipairs(player.inventory) do
-                            deserializedPlayer.inventory:add(Item:getItemInTableByName(inGameState.items, item.itemName), item.slotID)
-                        end
-                    end
-                    inGameState.currentPlayer = deserializedPlayer --To know which player the client is
-                end
-                self.players[deserializedPlayer.connectId] = deserializedPlayer
-            end
-        end
-    end)
-
     -- Receive the map and create it
     self.sock:on("newMap", function(map)
         local inGame = GameState:getState("InGame")
@@ -66,18 +46,34 @@ function Client:init()
         inGame:createCanvas(map.width*TILESIZE, map.height*TILESIZE)
     end)
 
-    self.sock:on("playersUpdate", function(players)
-        --self:receivePong(data.timestamp)
-        for _, serializedPlayer in ipairs(players) do
-            local connectID = serializedPlayer.connectId
-            local player = self.players[connectID]
-            local isCurrentPlayer = connectID == self.sock:getConnectId()
-            if isCurrentPlayer then
-                self.lastRequestProcessedID = serializedPlayer.lastRequestProcessedID
-                serializedPlayer.isCurrentPlayer = true
-            end
 
-            player:applyServerResponse(serializedPlayer)
+    -- Update the players
+    self.sock:on("playersUpdate", function(serializedPlayers)
+        for _, serializedPlayer in ipairs(serializedPlayers) do
+            local isCurrentPlayer = serializedPlayer.connectId == self.sock:getConnectId()
+
+            if self.players[serializedPlayer.connectId] == nil then --If new player
+                local inGameState = GameState:getState("InGame")
+
+                local deserializedNewPlayer = Player(serializedPlayer.x, serializedPlayer.y, serializedPlayer.connectId, false, isCurrentPlayer)
+                deserializedNewPlayer.angle, deserializedNewPlayer.direction, deserializedNewPlayer.animationStatus = serializedPlayer.angle, serializedPlayer.direction, serializedPlayer.animationStatus
+                if serializedPlayer.inventory then
+                    for _, item in ipairs(serializedPlayer.inventory) do
+                        deserializedNewPlayer.inventory:add(Item:getItemInTableByName(inGameState.items, item.itemName), item.slotID)
+                    end
+                end
+                self.players[serializedPlayer.connectId] = deserializedNewPlayer
+                if isCurrentPlayer then
+                    inGameState.currentPlayer = deserializedNewPlayer
+                end
+            else --Update the existing player
+                local player = self.players[serializedPlayer.connectId]
+                if isCurrentPlayer then
+                    self.lastRequestProcessedID = serializedPlayer.lastRequestProcessedID
+                    serializedPlayer.isCurrentPlayer = true
+                end
+                player:applyServerResponse(serializedPlayer)
+            end
         end
     end)
 
@@ -113,10 +109,10 @@ function Client:update(dt)
             currentPlayer:clientUpdate()
             if input.state.updated then
                 self.lastRequestID = self.lastRequestID +1
-                self.inputsNotServProcessed[self.lastRequestID] = {input = input.state, pos = {x=currentPlayer.x, y=currentPlayer.y}}
+                self.inputsNotServProcessed[self.lastRequestID] = {input = input.state, pos = {x=currentPlayer.x, y=currentPlayer.y}} --rename to buffer smth
 
                 if Utils:countAssoTableItems(self.inputsNotServProcessed) > 25 then
-                    self.inputsNotServProcessed[self.lastRequestID-20] = nil
+                    self.inputsNotServProcessed[self.lastRequestID-25] = nil
                 end
 
                 local dataToSend = {

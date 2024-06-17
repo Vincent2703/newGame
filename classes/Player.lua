@@ -1,8 +1,7 @@
 Player = class("Player")
 
-function Player:init(x, y, connectId, peerId, fromServer, current)
+function Player:init(x, y, connectId, fromServer, current)
     self.connectId = connectId
-    self.peerId = peerId
 
     self.current = current or false
     
@@ -65,8 +64,6 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
     self.body = Body:new(self.currentMap.lightWorld)
     self:setPosition(x, y)
 
-    --self.clientX, self.clientY = x, y
-
     self.inventory = Inventory()
 
     self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged
@@ -93,16 +90,15 @@ function Player:init(x, y, connectId, peerId, fromServer, current)
 end
 
 
-
-
 function Player:clientUpdate()
     local inputState = input.state --To rename 
     local newPos = self:getNewPos(inputState)
 
-    --setPos()
-    self.x, self.y = newPos.x, newPos.y
+    self:setPosition(newPos.x, newPos.y)
+    --self.x, self.y = newPos.x, newPos.y
     
     self.angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, self.input.mouse.x, self.input.mouse.y) --use lume function
+    self:setAngle(self.angle)
     self.direction = self:getDirection(self.angle)
     self.animationStatus = (newPos.dx ~= 0 or newPos.dy ~= 0) and "walk" or "idle"
 
@@ -111,7 +107,6 @@ function Player:clientUpdate()
     local idSlot = inventory.selectedSlot.id
     local wheelUp, wheelDown = inputState.mouse.wheelmovedUp, inputState.mouse.wheelmovedDown
 
-    --print("a: "..self.inventory.selectedSlot.id)
     if wheelDown then
         if idSlot-1 == 0 then
             idSlot = #inventory.slots
@@ -125,15 +120,17 @@ function Player:clientUpdate()
             idSlot = idSlot+1
         end
     end
-    --print("b: "..self.inventory.selectedSlot.id)
     if wheelUp or wheelDown then
+        --print(idSlot)
         self.inventory:setSelectedSlot(idSlot)
     end
-    --print("c: "..self.inventory.selectedSlot.id)
 end
 
 function Player:applyServerResponse(player)
-    if player.isCurrentPlayer then --If current player, do corrections
+    local playerX, playerY = self.x, self.y
+
+    if player.isCurrentPlayer then --If current player and already sent data, do corrections
+
         local posSaved = client.inputsNotServProcessed[player.lastRequestProcessedID].pos --Get the old pos that corresponds with the response received
         if player.x ~= posSaved.x or player.y ~= posSaved.y then --Check if differents
             local newState = {x=player.x, y=player.y} --Create a new state and recalculate the pos with the new starting pos
@@ -145,47 +142,52 @@ function Player:applyServerResponse(player)
             --Compare with current position
             if newState.x ~= self.goalX then
                 self.goalX = newState.x
-                self.x = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
+                playerX = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
             end
             if newState.y ~= self.goalY then
                 self.goalY = newState.y
-                self.y = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
+                playerY = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
             end
+            self:setPosition(playerX, playerY)
         end
-    else --Otherwise, no need correction
+
+        -- Only needed by currentPlayer
+        local itemsTable = GameState:getState("InGame").items
+        for _, slot in ipairs(self.inventory.slots) do
+            slot.item = nil
+        end
+        for _, slot in ipairs(player.inventory) do
+            local item = Item:getItemInTableByName(itemsTable, slot.itemName)
+            self.inventory:add(item, slot.id)
+        end
+    
+        if player.bodyStatus then
+            self.bodyStatus = player.bodyStatus
+            self.interface.GUIItems.bodyStatus.bodyStatus = self.bodyStatus --?
+        end
+
+    else --Otherwise, no need correction, just directly apply pos given by the server
         if player.x then
-            self.x = player.x
+            playerX = player.x
         end
         if player.y then
-            self.y = player.y
+            playerY = player.y
         end
-    end
 
-    self.animationStatus = player.animationStatus
+        self:setPosition(playerX, playerY)
 
-    if player.angle then
-        self:setAngle(player.angle)
+        self.animationStatus = player.animationStatus
 
-        self.direction = self:getDirection(player.angle)
-    end
-
-    local itemsTable = GameState:getState("InGame").items
-    for _, slot in ipairs(self.inventory.slots) do
-        slot.item = nil
-    end
-    for _, slot in ipairs(player.inventory) do
-        local item = Item:getItemInTableByName(itemsTable, slot.itemName)
-        self.inventory:add(item, slot.id)
-    end
-
-    if player.bodyStatus then
-        self.bodyStatus = player.bodyStatus
-        self.interface.GUIItems.bodyStatus.bodyStatus = self.bodyStatus --?
+        if player.angle then
+            self:setAngle(player.angle)
+    
+            self.direction = self:getDirection(player.angle)
+        end
     end
 end
 
 function Player:serverUpdate()
-    local prevX, prevY, prevAngle, oldStatus = self.x, self.y, self.angle, self.animationStatus
+    local prevX, prevY, prevAngle, oldAnimStatus = self.x, self.y, self.angle, self.animationStatus
 
     local newPos = self:getNewPos(self.input)
 
@@ -193,15 +195,17 @@ function Player:serverUpdate()
     self.x, self.y = lume.round(newPos.x), lume.round(newPos.y)
     
     self.angle = self.input.mouse.angle
-    --self.direction = self:getDirection(self.angle)
-    self.animationStatus = (newPos.dx ~= 0 or newPos.dy ~= 0) and "walk" or "idle"
+    self.direction = self:getDirection(self.angle)
+    local moving = self.input.actions.right or self.input.actions.left or self.input.actions.up or self.input.actions.down
+    self.animationStatus = moving and "walk" or "idle" --Using dx and dy is imprecise because of corrections
 
     local inventory = self.inventory
     for _, col in ipairs(newPos.collisions) do
         local obj = col.other.instance
         if obj and class.isInstance(obj) and obj:instanceOf(Item) then
-            inventory:add(obj)
-            self.currentMap:removeItem(col.other)
+            if inventory:add(obj) then --True if space to take the item
+                self.currentMap:removeItem(col.other)
+            end
         end
     end
 
@@ -221,7 +225,7 @@ function Player:serverUpdate()
         end
     end
 
-    self.changed = self.input.keyReleased or self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.animationStatus ~= oldStatus or inventoryUpdated
+    self.changed = self.input.keyReleased or self.x ~= prevX or self.y ~= prevY or self.angle ~= prevAngle or self.animationStatus ~= oldAnimStatus or inventoryUpdated
 end
 
 function Player:getNewPos(input, startX, startY)

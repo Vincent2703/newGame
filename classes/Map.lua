@@ -613,5 +613,5 @@ function Map:draw()
     end
 
     --love.graphics.origin()
-    --self.lightWorld:Draw()
+    self.lightWorld:Draw()
 end
