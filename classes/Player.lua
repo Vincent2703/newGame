@@ -95,35 +95,11 @@ function Player:clientUpdate()
     local newPos = self:getNewPos(inputState)
 
     self:setPosition(newPos.x, newPos.y)
-    --self.x, self.y = newPos.x, newPos.y
     
     self.angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, self.input.mouse.x, self.input.mouse.y) --use lume function
     self:setAngle(self.angle)
     self.direction = self:getDirection(self.angle)
     self.animationStatus = (newPos.dx ~= 0 or newPos.dy ~= 0) and "walk" or "idle"
-
-    --Inventory TODO : recreate update function
-    local inventory = self.inventory
-    local idSlot = inventory.selectedSlot.id
-    local wheelUp, wheelDown = inputState.mouse.wheelmovedUp, inputState.mouse.wheelmovedDown
-
-    if wheelDown then
-        if idSlot-1 == 0 then
-            idSlot = #inventory.slots
-        else
-            idSlot = idSlot-1
-        end
-    elseif wheelUp then
-        if idSlot+1 > #inventory.slots then
-            idSlot = 1
-        else
-            idSlot = idSlot+1
-        end
-    end
-    if wheelUp or wheelDown then
-        --print(idSlot)
-        self.inventory:setSelectedSlot(idSlot)
-    end
 end
 
 function Player:applyServerResponse(player)
@@ -213,10 +189,11 @@ function Player:serverUpdate()
     local inputActions = self.input.actions
 
     local inventoryUpdated = false
+
     if inventory.selectedSlot.item and inventory.selectedSlot.item:instanceOf(Item) then
         local item = inventory.selectedSlot.item
         if inputActions.newPress.action then
-            item:use(self)
+            item:useOn(self)
             inventory:removeItemSlotId(inventory.selectedSlot.id)
             inventoryUpdated = true
         elseif inputActions.newPress.throw then
@@ -265,6 +242,7 @@ function Player:getNewPos(input, startX, startY)
 end
 
 function Player:smoothMove()
+    local x, y = self.x, self.y
     if self.goalX == self.x then
         self.goalX = nil
     end
@@ -272,17 +250,18 @@ function Player:smoothMove()
         self.goalY = nil
     end
     if self.goalX and self.x ~= self.goalX then
-        self.x = lume.round(lume.lerp(self.x, self.goalX, 0.8), 0.1)
+        x = lume.round(lume.lerp(self.x, self.goalX, 0.8), 0.1)
     end
     if self.goalY and self.y ~= self.goalY then
-        self.y = lume.round(lume.lerp(self.y, self.goalY, 0.8), 0.1)
+        y = lume.round(lume.lerp(self.y, self.goalY, 0.8), 0.1)
     end
+    self:setPosition(x, y)
 end
 
 
 
 function Player:draw()
-    self.currentAnimation:draw(self.spritesheet, lume.round(self.x), lume.round(self.y), 0, 1, 1, 8, 8)
+    self.currentAnimation:draw(self.spritesheet, self.x, self.y, 0, 1, 1, 8, 8)
 end
 
 function Player:getDirection(angle)
@@ -336,17 +315,30 @@ end
 
 function Player:setPosition(x, y)
     self.x, self.y = x, y
-    self.body:SetPosition(x+8, y+8)
-end
 
-function Player:interpolatePosition(dt)
+    --Workaround...
+    --[[if input.state.updated then
+        local bodyPos = {x=x+8, y=y+6}
+        if input.state.actions.right then
+            bodyPos.x = bodyPos.x+1
+        elseif input.state.actions.left then
+            bodyPos.x = bodyPos.x-1
+        end
+        if input.state.actions.up then
+            bodyPos.y = bodyPos.y-1
+        elseif input.state.actions.down then
+            bodyPos.y = bodyPos.y+1
+        end
 
+        self.body:SetPosition(bodyPos.x, bodyPos.y)
+    end--]]
+    self.body:SetPosition(x+8, y+6)
 end
 
 function Player:setAngle(angle)
     self.angle = angle
     self.flashlight:SetAngle(self.angle)
-    if self.current then
+    if self.haloLight then
         self.haloLight:SetAngle(self.angle-180)
     end
 end

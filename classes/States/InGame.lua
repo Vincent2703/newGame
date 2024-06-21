@@ -25,7 +25,7 @@ function InGame:update(dt) --Client side
         end
 
         if self.currentPlayer then
-            --self.currentPlayer:smoothMove() --Interpolate at each frame
+            self.currentPlayer:smoothMove() --Interpolate at each frame
             self.currentPlayer.interface:update(dt)
         end
     end

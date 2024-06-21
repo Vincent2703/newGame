@@ -51,3 +51,28 @@ end
 function Inventory:removeItemSlotId(slotID)
     self.slots[slotID].item = nil
 end
+
+
+function Inventory:update()
+    local inputMouse = input.state.mouse
+    local idSlot = self.selectedSlot.id
+    local wheelUp, wheelDown = inputMouse.wheelmovedUp, inputMouse.wheelmovedDown
+
+    if wheelDown then
+        if idSlot-1 == 0 then
+            idSlot = #self.slots
+        else
+            idSlot = idSlot-1
+        end
+    elseif wheelUp then
+        if idSlot+1 > #self.slots then
+            idSlot = 1
+        else
+            idSlot = idSlot+1
+        end
+    end
+
+    if wheelUp or wheelDown then
+        self:setSelectedSlot(idSlot)
+    end
+end

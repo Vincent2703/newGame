@@ -97,17 +97,15 @@ end
 function Client:update(dt)
     local currentPlayer = GameState:getState("InGame").currentPlayer --attr ?
     if currentPlayer then --TODO : create & use gameStarted
-        --if input.state.updated then
-            --self.sock:setSendMode("reliable")
-            --self:sendPing() --if debug true
-            --self.sock:send("playerInputs", {id=self.lastRequestID, inputs=input.state})
-        --end
+        local oldSelectedSlotID = currentPlayer.inventory.selectedSlot.id
+        currentPlayer.inventory:update()
         
         self.timeAccumulator = self.timeAccumulator + dt
+
         while self.timeAccumulator >= FIXED_DT do
-            local oldSelectedSlotID = currentPlayer.inventory.selectedSlot.id
             currentPlayer:clientUpdate()
             if input.state.updated then
+ 
                 self.lastRequestID = self.lastRequestID +1
                 self.inputsNotServProcessed[self.lastRequestID] = {input = input.state, pos = {x=currentPlayer.x, y=currentPlayer.y}} --rename to buffer smth
 

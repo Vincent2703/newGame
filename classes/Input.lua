@@ -106,10 +106,5 @@ function love.wheelmoved(dx, dy)
 end
 
 function love.keyreleased(key)
-	--input.state.updated = true --Sert à rien parce que exec avant update()
 	input.state.keyReleased = true
 end
-
---[[function love.keypressed(key)
-	input.state.keyReleased = false
-end--]]
