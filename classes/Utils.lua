@@ -8,6 +8,10 @@ function Utils:rectsIntersect(aX1, aX2, aY1, aY2, bX1, bX2, bY1, bY2)
     return (aX1 < bX2) and (bX1 < aX2) and (aY1 < bY2) and (bY1 < aY2)
 end
 
+function Utils:inCircleRadius(pX, pY, cX, cY, cR)
+    return (pX - cX)^2 + (pY - cY)^2 <= cR^2
+end
+
 function Utils:calcAngleBetw2Pts(pt1X, pt1Y, pt2X, pt2Y)
     return math.deg(math.atan2(pt2Y - pt1Y, pt2X - pt1X))+180 --use lume.angle ?
 end

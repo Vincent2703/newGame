@@ -605,6 +605,11 @@ function Map:draw()
                 end
                 love.graphics.setColor(1, 1, 1)
 
+
+                for _, monster in pairs(client.NPCs.monsters) do
+                    monster:draw()
+                end
+
                 for _, player in pairs(client.players) do
                     player:draw()
                 end
@@ -614,4 +619,14 @@ function Map:draw()
 
     --love.graphics.origin()
     self.lightWorld:Draw()
+end
+
+
+function Map:isPosOpen(x, y)
+   -- print(x, y)
+    return self.architecture[x][y] > 0
+end
+
+function Map:absPosToTilePos(x, y)
+    return math.floor(x/TILESIZE), math.floor(y/TILESIZE)
 end

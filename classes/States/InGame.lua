@@ -4,7 +4,7 @@ function InGame:init()
     -- Items creation
     self.items = {
         Consumable("Health potion",
-            {filePath="assets/textures/items/potion.png", 
+            {filePath="assets/textures/items/consumables/potion.png", 
                 sprites={ 
                     { x=1, y=1, w=16, h=16, color={1, 1, 1} }, 
                     { x=20, y=1, w=16, h=16, color={1, 0, 0.25} } 
@@ -19,12 +19,7 @@ function InGame:update(dt) --Client side
     if self.map and self.map.lightWorld then --Map exists
         self.map.lightWorld:Update(dt)
 
-        --TODO : move to function in Player
-        for _, player in pairs(client.players) do
-            player:manageAnimations(dt)
-        end
-
-        if self.currentPlayer then
+        if self.currentPlayer then --To move to Player ?
             self.currentPlayer:smoothMove() --Interpolate at each frame
             self.currentPlayer.interface:update(dt)
         end

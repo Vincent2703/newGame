@@ -5,9 +5,9 @@ function Player:init(x, y, connectId, fromServer, current)
 
     self.current = current or false
     
-    self.spritesheet = love.graphics.newImage("assets/textures/players/Character-Base.png")
+    self.spritesheet = love.graphics.newImage("assets/textures/characters/players/Character-Base.png")
     local spritesheetTileDim = 32
-    self.spritesheetTileHalfDim = spritesheetTileDim/2
+    --self.spritesheetTileHalfDim = spritesheetTileDim/2
     local grid = anim8.newGrid(spritesheetTileDim, spritesheetTileDim, self.spritesheet:getWidth(), self.spritesheet:getHeight())
     self.w, self.h = 16, 16
 
@@ -118,11 +118,13 @@ function Player:applyServerResponse(player)
             --Compare with current position
             if newState.x ~= self.goalX then
                 self.goalX = newState.x
-                playerX = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
+                --playerX = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
+                playerX = lume.lerp(self.x, newState.x, 0.5)
             end
             if newState.y ~= self.goalY then
                 self.goalY = newState.y
-                playerY = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
+                --playerY = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
+                playerY = lume.lerp(self.y, newState.y, 0.5)
             end
             self:setPosition(playerX, playerY)
         end
@@ -167,8 +169,8 @@ function Player:serverUpdate()
 
     local newPos = self:getNewPos(self.input)
 
-    --setPos()
-    self.x, self.y = lume.round(newPos.x), lume.round(newPos.y)
+    --self.x, self.y = lume.round(newPos.x), lume.round(newPos.y)
+    self.x, self.y = newPos.x, newPos.y
     
     self.angle = self.input.mouse.angle
     self.direction = self:getDirection(self.angle)
@@ -221,7 +223,8 @@ function Player:getNewPos(input, startX, startY)
     end
 
     local x, y = startX or self.x, startY or self.y
-    local posX, posY = lume.round(x+dx, 0.1), lume.round(y+dy, 0.1)
+    --local posX, posY = lume.round(x+dx, 0.1), lume.round(y+dy, 0.1)
+    local posX, posY = x+dx, y+dy
 
     local actualX, actualY, cols = self.currentMap.bumpWorld:move(self, posX, posY,
     function(player, other) --manageCollisions()
@@ -250,10 +253,12 @@ function Player:smoothMove()
         self.goalY = nil
     end
     if self.goalX and self.x ~= self.goalX then
-        x = lume.round(lume.lerp(self.x, self.goalX, 0.8), 0.1)
+        --x = lume.round(lume.lerp(self.x, self.goalX, 0.8), 0.1)
+        x = lume.lerp(self.x, self.goalX, 0.8)
     end
     if self.goalY and self.y ~= self.goalY then
-        y = lume.round(lume.lerp(self.y, self.goalY, 0.8), 0.1)
+        --y = lume.round(lume.lerp(self.y, self.goalY, 0.8), 0.1)
+        y = lume.lerp(self.y, self.goalY, 0.8)
     end
     self:setPosition(x, y)
 end
@@ -261,7 +266,7 @@ end
 
 
 function Player:draw()
-    self.currentAnimation:draw(self.spritesheet, self.x, self.y, 0, 1, 1, 8, 8)
+    self.currentAnimation:draw(self.spritesheet, lume.round(self.x), lume.round(self.y), 0, 1, 1, 8, 8)
 end
 
 function Player:getDirection(angle)
@@ -317,7 +322,7 @@ function Player:setPosition(x, y)
     self.x, self.y = x, y
 
     --Workaround...
-    --[[if input.state.updated then
+    if input.state.updated then
         local bodyPos = {x=x+8, y=y+6}
         if input.state.actions.right then
             bodyPos.x = bodyPos.x+1
@@ -331,8 +336,8 @@ function Player:setPosition(x, y)
         end
 
         self.body:SetPosition(bodyPos.x, bodyPos.y)
-    end--]]
-    self.body:SetPosition(x+8, y+6)
+    end
+    --self.body:SetPosition(x+8, y+6)
 end
 
 function Player:setAngle(angle)

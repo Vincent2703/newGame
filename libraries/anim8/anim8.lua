@@ -224,9 +224,13 @@ local function seekFrameIndex(intervals, timer)
 end
 
 function Animation:update(dt)
-  if self.status ~= "playing" then return end
+  if self.status == "paused" then return end
 
-  self.timer = self.timer + dt
+  if self.status == "playing" then
+    self.timer = self.timer + dt
+  elseif self.status == "rewind" then
+    self.timer = self.timer - dt
+  end
   local loops = math.floor(self.timer / self.totalDuration)
   if loops ~= 0 then
     self.timer = self.timer - self.totalDuration * loops
@@ -256,6 +260,10 @@ function Animation:pauseAtStart()
   self.position = 1
   self.timer = 0
   self:pause()
+end
+
+function Animation:rewind()
+  self.status = "rewind"
 end
 
 function Animation:resume()

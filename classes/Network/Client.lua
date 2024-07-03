@@ -11,6 +11,9 @@ function Client:init()
     self.lastRequestProcessedID = nil
 
     self.players = {}
+    self.NPCs = {
+        monsters = {}
+    }
 
     self.sock = sock.newClient("localhost", 27039)
     self.sock:enableCompression()
@@ -52,7 +55,7 @@ function Client:init()
         for _, serializedPlayer in ipairs(serializedPlayers) do
             local isCurrentPlayer = serializedPlayer.connectId == self.sock:getConnectId()
 
-            if self.players[serializedPlayer.connectId] == nil then --If new player
+            if not self.players[serializedPlayer.connectId] then --If new player
                 local inGameState = GameState:getState("InGame")
 
                 local deserializedNewPlayer = Player(serializedPlayer.x, serializedPlayer.y, serializedPlayer.connectId, false, isCurrentPlayer)
@@ -77,6 +80,18 @@ function Client:init()
         end
     end)
 
+    -- Update the NPCs
+    self.sock:on("NPCsUpdate", function(serializedNPCs)
+        for _, serializedMonster in ipairs(serializedNPCs.monsters) do
+            if not self.NPCs.monsters[serializedMonster.id] then --If new monster
+                local deserializedNewMonster = Monster(serializedMonster.x, serializedMonster.y)
+                table.insert(self.NPCs.monsters, deserializedNewMonster)
+            end
+
+            self.NPCs.monsters[serializedMonster.id]:applyServerResponse(serializedMonster)
+        end
+    end)
+
     self.sock:on("itemsMapUpdate", function(items)
         local inGameState = GameState:getState("InGame")
         local allItems = inGameState.items --Table with all items
@@ -95,6 +110,10 @@ function Client:init()
 end
 
 function Client:update(dt)
+    for _, monster in pairs(self.NPCs.monsters) do
+        monster:clientUpdate(dt)
+    end
+
     local currentPlayer = GameState:getState("InGame").currentPlayer --attr ?
     if currentPlayer then --TODO : create & use gameStarted
         local oldSelectedSlotID = currentPlayer.inventory.selectedSlot.id
@@ -125,6 +144,8 @@ function Client:update(dt)
             end
 
             self.timeAccumulator = self.timeAccumulator - FIXED_DT
+
+            currentPlayer:manageAnimations(dt)
         end
     end
     self.sock:update()

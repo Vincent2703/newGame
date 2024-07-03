@@ -5,6 +5,10 @@ function Server:init()
     self.sock:enableCompression()
 
     self.players = {}
+
+    self.NPCs = {
+        monsters = {}
+    }
     self:startNewGame()
 
     -- A connection is made to the server
@@ -37,7 +41,7 @@ end
 function Server:update(dt)
     if self.gameStarted then
             local serializedPlayers = {}
-            for _, player in pairs(self.players) do 
+            for _, player in ipairs(self.players) do 
                 if player.changed and player.lastRequestProcessedID then
                     player.changed = false
                     local serializedInventory = {} --TODO : serialized function
@@ -73,6 +77,23 @@ function Server:update(dt)
                     table.insert(serializedItemsMap, {name=item.instance.name, x=item.x, y=item.y})
                 end
                 self.sock:sendToAll("itemsMapUpdate", serializedItemsMap)
+            end
+
+
+            local serializedNPCs = {monsters={}}
+            for id, monster in ipairs(self.NPCs.monsters) do
+                monster:serverUpdate(dt)
+                if monster.changed then
+                    table.insert(serializedNPCs.monsters, {
+                        id              = id,
+                        x               = monster.x,
+                        y               = monster.y,
+                        animationStatus = monster.animationStatus
+                    })
+                end
+            end
+            if #serializedNPCs.monsters > 0 then
+                self.sock:sendToAll("NPCsUpdate", serializedNPCs)
             end
         end
 
@@ -137,6 +158,11 @@ function Server:startNewGame()
         itemsMap = items
     }
 
+    --Add monsters
+    local x, y = map.spawnPoint.x*TILESIZE + math.random(-10, 10), map.spawnPoint.y*TILESIZE + math.random(-10, 10)
+    print(x, y)
+    table.insert(self.NPCs.monsters, Monster(x, y))
+
     self.gameStarted = true
 end
 
@@ -192,4 +218,21 @@ function Server:newClient(newClient, newClientPeer)
 
     self.sock:sendToPeer(newClientPeer, "playersUpdate", serializedPlayers) --Send all players to the new player
     self.sock:sendToAllBut(newClient, "playersUpdate", {newClientSerializedPlayer}) --Send only the new player to all other players
+
+    -- Serialize the NPCs
+    local serializedNPCs = {monsters={}}
+    for id, monster in ipairs(self.NPCs.monsters) do
+        local serializedMonster = {
+            id = id,
+            x = monster.x,
+            y = monster.y,
+            animationStatus = monster.animationStatus
+        }
+
+        table.insert(serializedNPCs.monsters, serializedMonster)
+    end
+
+    if #serializedNPCs.monsters > 0 then
+        self.sock:sendToAll("NPCsUpdate", serializedNPCs)
+    end
 end

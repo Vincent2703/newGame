@@ -3,8 +3,8 @@ BodyStatusGUI = class("BodyStatusGUI")
 function BodyStatusGUI:init(bodyStatus)
     self.x, self.y = 30, 30
     self.bodyStatus = bodyStatus
-    self.spritesheet = love.graphics.newImage("assets/textures/players/bodyStatus.png")
-    local width, height = 14, 13
+    self.spritesheet = love.graphics.newImage("assets/textures/GUI/bodyStatus.png")
+    local width, height = 14, 14
     self.sprites = {
         body = love.graphics.newQuad(0, 0, width, height, self.spritesheet),
         leftArm = love.graphics.newQuad(width, 0, width, height, self.spritesheet),
