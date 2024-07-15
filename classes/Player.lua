@@ -335,7 +335,7 @@ function Player:setPosition(x, y)
             bodyPos.y = bodyPos.y+1
         end
 
-        self.body:SetPosition(bodyPos.x, bodyPos.y)
+        self.body:SetPosition(bodyPos.x, bodyPos.y) --for lights
     end
     --self.body:SetPosition(x+8, y+6)
 end

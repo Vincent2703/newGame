@@ -85,6 +85,8 @@ function loadClasses()
     require("classes/Item")
     require("classes/Items/Consumable")
 
+    require("classes/Pathfinding")
+
     require("classes/NPC/Monster")
     require("classes/Player")
     require("classes/Map")

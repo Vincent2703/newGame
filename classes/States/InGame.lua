@@ -30,12 +30,21 @@ function InGame:draw()
     if self.canvas and self.currentPlayer then
         love.graphics.setCanvas(self.canvas)
         self.map:draw()
-        --[[if self.map.bumpWorld then
+        if self.map.bumpWorld then
             local colliders = self.map.bumpWorld:getItems()
             for _, collider in pairs(colliders) do
-                love.graphics.rectangle("line", collider.x, collider.y, collider.w, collider.h)    
+                love.graphics.rectangle("line", collider.x, collider.y, collider.w or 1, collider.h or 1)    
             end
-        end--]]
+        end
+
+        love.graphics.setColor(1, 0, 0)
+        if POINTS and #POINTS > 0 then
+            for _, point in ipairs(POINTS) do
+                love.graphics.circle("fill", point.x, point.y, 4, 4)
+            end
+        end
+        love.graphics.setColor(1, 1, 1)
+
         love.graphics.setCanvas()
         love.graphics.draw(self.canvas, -self.currentPlayer.x*zoom+halfWidthWindow, -self.currentPlayer.y*zoom+halfHeightWindow, 0, zoom)
         

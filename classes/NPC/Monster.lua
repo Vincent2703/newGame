@@ -2,20 +2,24 @@ Monster = class("Monster")
 
 function Monster:init(x, y)
     self.x, self.y = x, y
+    self.w, self.h = 14, 10
 
     self.viewRadius = TILESIZE*5
+    self.sqDistAbortPursuit = 5000
 
     self.status = "idle" --Search/IDLE TODO : distinct name with animationStatus
 
     self.playerTarget = nil --Target to attack
-    self.tileGoal = nil
-    self.pathPoints = {}
-
+    self.lastPlayerTargetPos = nil
+    self.goal = nil
 
     --Slime todo : subclasses
     self.velocity = 8
     self.spritesheet = love.graphics.newImage("assets/textures/characters/NPC/Slime.png")
     local spritesheetTileDim = 32
+    self.offsetX, self.offsetY = spritesheetTileDim/2-self.w/2, spritesheetTileDim/2-self.h/2
+    self.offsetX = self.offsetX%2==0 and self.offsetX+1 or self.offsetX
+    self.offsetY = self.offsetY%2==0 and self.offsetY+1 or self.offsetY
     local grid = anim8.newGrid(spritesheetTileDim, spritesheetTileDim, self.spritesheet:getWidth(), self.spritesheet:getHeight())
     self.animationStatus = "idle"
 
@@ -30,114 +34,119 @@ function Monster:init(x, y)
     self.currentAnimation = self.animations[self.animationStatus]
 
     self.changed = false
+
+    self.currentMap = GameState:getState("InGame").map
+    local widthMapPX, heightMapPX = self.currentMap.width*TILESIZE, self.currentMap.height*TILESIZE
+    self.currentMap.bumpWorld:add(self, self.x, self.y, self.w, self.h)
+
+    self.pathfinding = Pathfinding(widthMapPX, heightMapPX, TILESIZE/2,
+    function(x, y) 
+        --[[local notBorder = y > 0 and y < widthMapPX and x > 0 and x < heightMapPX
+        local tileAvailable = false
+        if notBorder then
+            tileAvailable = self.currentMap.architecture[math.ceil(x/TILESIZE)][math.ceil(y/TILESIZE)] ~= 0
+        end--]]
+
+        if true--[[notBorder and tileAvailable--]] then
+            local _, len = self.currentMap.bumpWorld:queryRect(x-self.w/2, y-self.h/2, self.w, self.h, 
+            function(obj) 
+                return obj.obstacle 
+            end) 
+            return len == 0
+        else
+            return false
+        end
+    end)
+
+    self.timeLastPathFinding = 0
+    self.delayPathFinding = 0.5 --in s
 end
 
 function Monster:serverUpdate(dt)
-    --[[
-        Poursuite déclenchée quand un joueur dans zone de perception. inCircleRadius + raytracing pour prendre en compte les obstacles
-        Une fois la poursuite déclenchée, le monstre poursuit le joueur grâce à un algo de pathfinding.
-        Quand le monstre est dans la même tuile que le joueur, n'utilise plus le pathfinding mais compare pos au px près pour se déplacer vers lui.
-        La poursuite s'arrête si le joueur disparait de la zone de perception + marge
-    ]]
+    self.timeLastPathFinding = self.timeLastPathFinding + dt --To avoid too much calculations, min time between calcs
+
     local players = server.players
     local playersInZone = {}
     
-    for _, player in pairs(players) do
+    for _, player in pairs(players) do --Get the players in the view radius
         if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then
-            local distance = lume.distance(player.x, player.y, self.x, self.y, true)
-            table.insert(playersInZone, {instance=player, distance=distance})
+            local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, function(obj) return obj.obstacle end) --Is player visible ?
+            if --[[len == 0--]] true then
+                local distance = lume.distance(player.x, player.y, self.x, self.y, true)
+                table.insert(playersInZone, {instance=player, distance=distance})
+            end
         end
     end
 
     if #playersInZone > 0 then
-        --print("in pursuit")
         self.status = "pursuit"
-        playersInZone = lume.sort(playersInZone, "distance")
-        self.playerTarget = playersInZone[1].instance
+        playersInZone = lume.sort(playersInZone, "distance") --Sort the players by distance
+        self.playerTarget = playersInZone[1].instance --Get the closer one
     else
-        --print("idle")
         self.status = "idle"
         self.playerTarget = nil
     end
     
-    --so far, it works
-
     if self.status == "pursuit" then
         local map = GameState:getState("InGame").map
 
-        local startTilePosX, startTilePosY = map:absPosToTilePos(self.x, self.y)
-        local start = {x=startTilePosX, y=startTilePosY}
+        local start = {x=lume.round(self.x), y=lume.round(self.y)}
+        local goal = {x=self.playerTarget.x, y=self.playerTarget.y}
 
-        local oldGoal = self.tileGoal
-
-        local playerTargetTilePosX, playerTargetTilePosY = map:absPosToTilePos(self.playerTarget.x, self.playerTarget.y)
-        self.tileGoal = {x=playerTargetTilePosX, y=playerTargetTilePosY}
-
-        local function cbIsPosOpen(x, y)
-            return map:isPosOpen(x, y)
+        local function cbIsPathOK(goalX, goalY)
+            local _, len = map.bumpWorld:queryRect(goalX, goalY, self.w, self.h, function(obj) return obj.obstacle end)
+            return len == 0
         end
 
-        if oldGoal == nil or oldGoal.x ~= self.tileGoal.x or oldGoal.y ~= self.tileGoal.y then
-            self.pathPoints = luastar:find(map.width, map.height, start, self.tileGoal, cbIsPosOpen, true) --last arg : cache
-            print("find new path")
-        else
+        local velRes = {vX=0, vY=0}
 
-            --check obstacle
-            if self.x ~= self.playerTarget.x or self.y ~= self.playerTarget.y then
-                local velRes = {vX=0, vY=0}
-                if self.x > self.playerTarget.x then -- left
-                    velRes.vX = -self.velocity*dt
-                elseif self.x < self.playerTarget.x then -- right
-                    velRes.vX = self.velocity*dt
-                end
-                if self.y > self.playerTarget.y then -- up
-                    velRes.vY = -self.velocity*dt
-                elseif self.y < self.playerTarget.y then -- down 
-                    velRes.vY = self.velocity*dt
+        if self.timeLastPathFinding >= self.delayPathFinding then --Delay elapsed
+            self.timeLastPathFinding = 0
+            if self.lastPlayerTargetPos == nil or self.lastPlayerTargetPos.x ~= self.playerTarget.x or self.lastPlayerTargetPos.y ~= self.playerTarget.y then --If the player moved
+
+                --Query segment between monster and player
+                local _, lenObstacles = self.currentMap.bumpWorld:querySegment(start.x, start.y, goal.x, goal.y, function(obj) return obj.obstacle end)
+
+                --If path is clear
+                if lenObstacles == 0 then
+                    self.pathPoints = {goal} --Direct path
+                else --Use pathfinding
+                    --self.pathPoints = self.pathfinding:getPath(start, goal)
+                    POINTS = self.pathfinding:getPath(start, goal)
+                    self.pathPoints = POINTS
                 end
 
-                if velRes.vX ~= 0 or velRes.vY ~= 0 then
-                    self.x = self.x + velRes.vX
-                    self.y = self.y + velRes.vY
-                    self.changed = true
-                else
-                    self.changed = false
-                end
+            end
+            self.lastPlayerTargetPos = {x=self.playerTarget.x, y=self.playerTarget.y}
+        end
+
+        if self.pathPoints and self.pathPoints[1] then --If found route
+            local posTarget = {x=self.pathPoints[1].x-self.w/2, y=self.pathPoints[1].y-self.h/2}
+            
+            if self.x > posTarget.x then -- left
+                velRes.vX = -self.velocity*dt
+            elseif self.x < posTarget.x then -- right
+                velRes.vX = self.velocity*dt
+            end
+            if self.y > posTarget.y then -- up
+                velRes.vY = -self.velocity*dt
+            elseif self.y < posTarget.y then -- down 
+                velRes.vY = self.velocity*dt
             end
 
-        end
-
-
-        if self.pathPoints then
-            if self.pathPoints[1] then
-                local monsterTilePosX, monsterTilePosY = map:absPosToTilePos(self.x, self.y)
-                local tileTarget = self.pathPoints[1]
-
-                local velRes = {vX=0, vY=0}
-                if monsterTilePosX > tileTarget.x then -- left
-                    velRes.vX = -self.velocity*dt
-                elseif monsterTilePosX < tileTarget.x then -- right
-                    velRes.vX = self.velocity*dt
-                end
-                if monsterTilePosY > tileTarget.y then -- up
-                    velRes.vY = -self.velocity*dt
-                elseif monsterTilePosY < tileTarget.y then -- down 
-                    velRes.vY = self.velocity*dt
-                end
-
-                if velRes.vX ~= 0 or velRes.vY ~= 0 then
-                    self.x = self.x + velRes.vX
-                    self.y = self.y + velRes.vY
-                    self.changed = true
-                else
-                    self.changed = false
-                end
-
-                monsterTilePosX, monsterTilePosY = map:absPosToTilePos(self.x, self.y)
-                if monsterTilePosX == tileTarget.x and monsterTilePosY == tileTarget.y then
+            if velRes.vX ~= 0 or velRes.vY ~= 0 then
+                --local newPos = self:getNewPos(velRes.vX, velRes.vY) --Pas utile de verif ?
+                local newPos = {x=self.x+velRes.vX, y=self.y+velRes.vY}
+                self.changed = newPos.x ~= self.x or newPos.y ~= self.y
+                self.x, self.y = newPos.x, newPos.y
+    
+                if lume.round(self.x) == posTarget.x and lume.round(self.y) == posTarget.y then
                     table.remove(self.pathPoints, 1)
-                end
+                end    
+            else
+                self.changed = false
             end
+  
         end
 
         if self.changed then
@@ -145,6 +154,25 @@ function Monster:serverUpdate(dt)
         end
     end
 end
+
+--[[function Monster:getNewPos(velX, velY)
+    local posX, posY = self.x+velX, self.y+velY
+
+    local actualX, actualY, cols = self.currentMap.bumpWorld:move(self, posX, posY,
+    function(monster, other) --TODO : add in function (filter)
+        if other.obstacle then
+            return "slide"
+        end
+    end)
+
+    return {
+        x=actualX, 
+        y=actualY, 
+        dx=velX, 
+        dy=velY,
+        collisions=cols
+    }
+end--]]
 
 function Monster:clientUpdate(dt)
     self.currentAnimation = self.animations[self.animationStatus]
@@ -158,5 +186,8 @@ function Monster:applyServerResponse(serializedMonster)
 end
 
 function Monster:draw()
-    self.currentAnimation:draw(self.spritesheet, lume.round(self.x), lume.round(self.y), 0, 1, 1, 8, 8)
+    love.graphics.setColor(1, 0, 0)
+    love.graphics.rectangle("fill", lume.round(self.x), lume.round(self.y), self.w, self.h)
+    love.graphics.setColor(1, 1, 1)
+    self.currentAnimation:draw(self.spritesheet, lume.round(self.x), lume.round(self.y), 0, 1, 1, self.offsetX, self.offsetY)
 end

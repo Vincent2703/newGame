@@ -622,11 +622,22 @@ function Map:draw()
 end
 
 
-function Map:isPosOpen(x, y)
-   -- print(x, y)
-    return self.architecture[x][y] > 0
+function Map:isPathOK(x, y, width, height, radius)
+    --[[local currTile = self.architecture[startX][startY] -- -1 à chaque ?
+    local newTile = self.architecture[goalX][goalY]
+
+    return currTile == newTile or newTile == 3--]]
+
+    return self.bumpWorld:queryRect(x, y, width, height, function(obj) return obj.obstacle end)
+    --return self.bumpWorld:queryPoint(startX, startY, function(obj) return obj.obstacle end) --Marche mais uniquement pour le coin sup gauche et c'est lent
 end
 
 function Map:absPosToTilePos(x, y)
-    return math.floor(x/TILESIZE), math.floor(y/TILESIZE)
+    return lume.round(x/TILESIZE), lume.round(y/TILESIZE)
 end
+
+--[[
+    Création d'un tableau
+    Une case = taille du monstre
+    Dans la case, check si obstacle
+]]
