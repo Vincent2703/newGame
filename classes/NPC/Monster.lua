@@ -63,6 +63,7 @@ function Monster:init(x, y)
 end
 
 function Monster:serverUpdate(dt)
+    self.changed = false
     local function filterPathIsClear(obj)
         return obj.obstacle
     end
@@ -70,26 +71,47 @@ function Monster:serverUpdate(dt)
     self.timeLastPathFinding = self.timeLastPathFinding + dt --To avoid too much calculations, min time between calcs
 
     local players = server.players
-    local playersInZone = {}
+    local nearestPlayer = {instance=nil, distance=math.huge}
     
-    for _, player in pairs(players) do --Get the players in the view radius
-        if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then
-            local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, filterPathIsClear) --Is player visible ?
-            if len == 0 then
-                local distance = lume.distance(player.x, player.y, self.x, self.y, true)
-                table.insert(playersInZone, {instance=player, distance=distance})
+    local function updateNearestPlayer()
+        for _, player in pairs(players) do
+            if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then
+                local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, filterPathIsClear)
+                if len == 0 then
+                    local distance = lume.distance(player.x, player.y, self.x, self.y, true)
+                    if distance < nearestPlayer.distance then
+                        nearestPlayer = {instance=player, distance=distance}
+                    end
+                end
             end
         end
     end
-
-    if #playersInZone > 0 then
-        self.status = "pursuit"
-        playersInZone = lume.sort(playersInZone, "distance") --Sort the players by distance
-        self.playerTarget = playersInZone[1].instance --Get the closer one
+    
+    if self.status == "pursuit" and self.playerTarget then
+        local inCircleRadius = Utils:inCircleRadius(self.playerTarget.x, self.playerTarget.y, self.x, self.y, self.viewRadius)
+        local _, lenObstacles = self.currentMap.bumpWorld:querySegment(self.x, self.y, self.playerTarget.x, self.playerTarget.y, filterPathIsClear)
+        local isVisible = lenObstacles == 0
+    
+        if not (inCircleRadius and isVisible) then
+            updateNearestPlayer()
+        end
     else
-        self.status = "idle"
-        self.playerTarget = nil
+        updateNearestPlayer()
     end
+    
+    if nearestPlayer.instance ~= nil then
+        if not (self.playerTarget and lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) <= self.sqDistAbortPursuit) then
+            self.status = "pursuit"
+            self.playerTarget = nearestPlayer.instance
+        end
+    else
+        if self.playerTarget and lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) > self.sqDistAbortPursuit then
+            self.status = "idle"
+            self.playerTarget = nil
+            self.pathPoints = nil
+        end
+    end
+    
     
     if self.status == "pursuit" then
         local map = GameState:getState("InGame").map
@@ -101,8 +123,6 @@ function Monster:serverUpdate(dt)
             local _, len = map.bumpWorld:queryRect(goalX, goalY, self.w, self.h, filterPathIsClear)
             return len == 0
         end
-
-        local velRes = {vX=0, vY=0}
 
         if self.timeLastPathFinding >= self.delayPathFinding then --Delay elapsed
             self.timeLastPathFinding = 0
@@ -140,7 +160,8 @@ function Monster:serverUpdate(dt)
 
         if self.pathPoints and self.pathPoints[1] then --If found route
             local posTarget = {x=self.pathPoints[1].x-self.w/2, y=self.pathPoints[1].y-self.h/2}
-            
+            local velRes = {vX=0, vY=0}
+
             if self.x > posTarget.x then -- left
                 velRes.vX = -self.velocity*dt
             elseif self.x < posTarget.x then -- right
@@ -153,21 +174,20 @@ function Monster:serverUpdate(dt)
             end
 
             if velRes.vX ~= 0 or velRes.vY ~= 0 then
+                self.changed = true --new pos
                 local newPos = {x=self.x+velRes.vX, y=self.y+velRes.vY}
-                self.changed = newPos.x ~= self.x or newPos.y ~= self.y
                 self.x, self.y = newPos.x, newPos.y
     
                 if lume.round(self.x) == posTarget.x and lume.round(self.y) == posTarget.y then
                     table.remove(self.pathPoints, 1)
                 end    
-            else
-                self.changed = false
             end
-  
         end
 
         if self.changed then
             self.animationStatus = "moving"
+        else
+            self.animationStatus = "idle" --MAJ du status pas envoyé au client
         end
     end
 end
