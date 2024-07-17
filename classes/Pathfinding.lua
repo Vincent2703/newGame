@@ -31,11 +31,27 @@ function Pathfinding:getNeighbors(node)
         table.insert(neighbors, {x=x+1, y=y})
     end
 
-    if y > 0 and self.nodes[y-1][x] then --top
-        table.insert(neighbors, {x=x, y=y-1})
+    if y > 0 then
+        if self.nodes[y-1][x] then --top
+            table.insert(neighbors, {x=x, y=y-1})
+        end
+        if self.nodes[y-1][x-1] then --top left
+            table.insert(neighbors, {x=x-1, y=y-1})
+        end
+        if self.nodes[y-1][x+1] then --top right
+            table.insert(neighbors, {x=x+1, y=y-1})
+        end
     end
-    if y < self.heightMap and self.nodes[y+1][x] then --bottom
-        table.insert(neighbors, {x=x, y=y+1})
+    if y < self.heightMap then --bottom
+        if self.nodes[y+1][x] then
+            table.insert(neighbors, {x=x, y=y+1})
+        end
+        if self.nodes[y+1][x-1] then --bottom left
+            table.insert(neighbors, {x=x-1, y=y+1})
+        end
+        if self.nodes[y+1][x+1] then --bottom right
+            table.insert(neighbors, {x=x+1, y=y+1}) 
+        end
     end
 
     return neighbors
@@ -47,6 +63,7 @@ function Pathfinding:reconstructPath(cameFrom, current, goalPX)
         current = cameFrom[current]
         table.insert(totalPath, 1, { x = current.x * self.cellSize, y = current.y * self.cellSize })
     end
+    table.remove(totalPath, 1)
     table.remove(totalPath, #totalPath)
     table.insert(totalPath, goalPX)
     return totalPath

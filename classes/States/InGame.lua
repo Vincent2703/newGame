@@ -36,15 +36,6 @@ function InGame:draw()
                 love.graphics.rectangle("line", collider.x, collider.y, collider.w or 1, collider.h or 1)    
             end
         end
-
-        love.graphics.setColor(1, 0, 0)
-        if POINTS and #POINTS > 0 then
-            for _, point in ipairs(POINTS) do
-                love.graphics.circle("fill", point.x, point.y, 4, 4)
-            end
-        end
-        love.graphics.setColor(1, 1, 1)
-
         love.graphics.setCanvas()
         love.graphics.draw(self.canvas, -self.currentPlayer.x*zoom+halfWidthWindow, -self.currentPlayer.y*zoom+halfHeightWindow, 0, zoom)
         

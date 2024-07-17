@@ -63,6 +63,10 @@ function Monster:init(x, y)
 end
 
 function Monster:serverUpdate(dt)
+    local function filterPathIsClear(obj)
+        return obj.obstacle
+    end
+
     self.timeLastPathFinding = self.timeLastPathFinding + dt --To avoid too much calculations, min time between calcs
 
     local players = server.players
@@ -70,8 +74,8 @@ function Monster:serverUpdate(dt)
     
     for _, player in pairs(players) do --Get the players in the view radius
         if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then
-            local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, function(obj) return obj.obstacle end) --Is player visible ?
-            if --[[len == 0--]] true then
+            local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, filterPathIsClear) --Is player visible ?
+            if len == 0 then
                 local distance = lume.distance(player.x, player.y, self.x, self.y, true)
                 table.insert(playersInZone, {instance=player, distance=distance})
             end
@@ -90,11 +94,11 @@ function Monster:serverUpdate(dt)
     if self.status == "pursuit" then
         local map = GameState:getState("InGame").map
 
-        local start = {x=lume.round(self.x), y=lume.round(self.y)}
-        local goal = {x=self.playerTarget.x, y=self.playerTarget.y}
+        local start = {x=lume.round(self.x), y=lume.round(self.y)} --Monster
+        local goal = {x=self.playerTarget.x+self.playerTarget.w/2, y=self.playerTarget.y+self.playerTarget.h/2} --Player (middle of it)
 
         local function cbIsPathOK(goalX, goalY)
-            local _, len = map.bumpWorld:queryRect(goalX, goalY, self.w, self.h, function(obj) return obj.obstacle end)
+            local _, len = map.bumpWorld:queryRect(goalX, goalY, self.w, self.h, filterPathIsClear)
             return len == 0
         end
 
@@ -103,17 +107,31 @@ function Monster:serverUpdate(dt)
         if self.timeLastPathFinding >= self.delayPathFinding then --Delay elapsed
             self.timeLastPathFinding = 0
             if self.lastPlayerTargetPos == nil or self.lastPlayerTargetPos.x ~= self.playerTarget.x or self.lastPlayerTargetPos.y ~= self.playerTarget.y then --If the player moved
-
-                --Query segment between monster and player
-                local _, lenObstacles = self.currentMap.bumpWorld:querySegment(start.x, start.y, goal.x, goal.y, function(obj) return obj.obstacle end)
-
+                --Depending on the monster's position relative to the player's one, query segments to check that the path is clear
+                local clearPath = true
+                if start.x < goal.x then --Check top right and bottom right
+                    local _, lenTopRight = self.currentMap.bumpWorld:querySegment(start.x+self.w, start.y, goal.x, goal.y, filterPathIsClear) --top right
+                    local _, lenBottomRight = self.currentMap.bumpWorld:querySegment(start.x+self.w, start.y+self.h, goal.x, goal.y, filterPathIsClear) --bottom right
+                    clearPath = lenTopRight + lenBottomRight == 0
+                elseif start.x > goal.x then --Check top left and bottom left
+                    local _, lenTopLeft = self.currentMap.bumpWorld:querySegment(start.x, start.y, goal.x, goal.y, filterPathIsClear) --top left
+                    local _, lenBottomLeft = self.currentMap.bumpWorld:querySegment(start.x, start.y+self.h, goal.x, goal.y, filterPathIsClear) --bottom left
+                    clearPath = lenTopLeft + lenBottomLeft == 0
+                end
+                if start.y < goal.y then --Check bottom left and bottom right
+                    local _, lenBottomLeft = self.currentMap.bumpWorld:querySegment(start.x, start.y+self.h, goal.x, goal.y, filterPathIsClear) --bottom left
+                    local _, lenBottomRight = self.currentMap.bumpWorld:querySegment(start.x+self.w, start.y+self.h, goal.x, goal.y, filterPathIsClear) --bottom right
+                    clearPath = lenBottomLeft + lenBottomRight == 0
+                elseif start.y > goal.y then --Check top left and top right
+                    local _, lenTopLeft = self.currentMap.bumpWorld:querySegment(start.x, start.y, goal.x, goal.y, filterPathIsClear) --top left
+                    local _, lenBottomLeft = self.currentMap.bumpWorld:querySegment(start.x, start.y+self.h, goal.x, goal.y, filterPathIsClear) --bottom left
+                    clearPath = lenTopLeft + lenBottomLeft == 0
+                end
                 --If path is clear
-                if lenObstacles == 0 then
+                if clearPath then
                     self.pathPoints = {goal} --Direct path
                 else --Use pathfinding
-                    --self.pathPoints = self.pathfinding:getPath(start, goal)
-                    POINTS = self.pathfinding:getPath(start, goal)
-                    self.pathPoints = POINTS
+                    self.pathPoints = self.pathfinding:getPath(start, goal)
                 end
 
             end
@@ -135,7 +153,6 @@ function Monster:serverUpdate(dt)
             end
 
             if velRes.vX ~= 0 or velRes.vY ~= 0 then
-                --local newPos = self:getNewPos(velRes.vX, velRes.vY) --Pas utile de verif ?
                 local newPos = {x=self.x+velRes.vX, y=self.y+velRes.vY}
                 self.changed = newPos.x ~= self.x or newPos.y ~= self.y
                 self.x, self.y = newPos.x, newPos.y
