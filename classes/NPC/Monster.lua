@@ -5,7 +5,7 @@ function Monster:init(x, y)
     self.w, self.h = 14, 10
 
     self.viewRadius = TILESIZE*5
-    self.sqDistAbortPursuit = 5000
+    self.sqDistAbortPursuit = 10000
 
     self.status = "idle" --Search/IDLE TODO : distinct name with animationStatus
 
@@ -99,16 +99,22 @@ function Monster:serverUpdate(dt)
         updateNearestPlayer()
     end
     
-    if nearestPlayer.instance ~= nil then
-        if not (self.playerTarget and lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) <= self.sqDistAbortPursuit) then
-            self.status = "pursuit"
-            self.playerTarget = nearestPlayer.instance
+
+    if self.playerTarget then
+        if lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) > self.sqDistAbortPursuit then
+            if nearestPlayer.instance ~= nil then
+                self.status = "pursuit"
+                self.playerTarget = nearestPlayer.instance
+            else
+                self.status = "idle"
+                self.playerTarget = nil
+                self.pathPoints = nil
+            end
         end
     else
-        if self.playerTarget and lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) > self.sqDistAbortPursuit then
-            self.status = "idle"
-            self.playerTarget = nil
-            self.pathPoints = nil
+        if nearestPlayer.instance ~= nil then
+            self.status = "pursuit"
+            self.playerTarget = nearestPlayer.instance
         end
     end
     
