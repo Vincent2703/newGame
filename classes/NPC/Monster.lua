@@ -4,8 +4,9 @@ function Monster:init(x, y)
     self.x, self.y = x, y
     self.w, self.h = 14, 10
 
-    self.viewRadius = TILESIZE*5
-    self.sqDistAbortPursuit = 10000
+    self.viewRadius = TILESIZE*3
+    self.sqViewRadius = self.viewRadius*self.viewRadius
+    self.sqMaxDistAttack = 100
 
     self.status = "idle" --Search/IDLE TODO : distinct name with animationStatus
 
@@ -28,8 +29,10 @@ function Monster:init(x, y)
         return anim8.newAnimation(grid(params.cols or 1, params.row or 1), speed, params.callback or nil)
     end
     self.animations = {
-        idle = newAnimation({cols="8-9"}),
-        moving = newAnimation({cols="1-6", callback="rewind", speed=0.15})
+        idle = newAnimation({row=2, cols="1-2"}),
+        moving = newAnimation({cols="1-6", callback="rewind", speed=0.15}),
+        dying = newAnimation({row=3, cols="1-5", speed=0.1}),
+        attacking = newAnimation({row=4, cols="1-3", speed=0.15})
     }
     self.currentAnimation = self.animations[self.animationStatus]
 
@@ -60,64 +63,70 @@ function Monster:init(x, y)
 
     self.timeLastPathFinding = 0
     self.delayPathFinding = 0.5 --in s
+
+    self.timeLastAttack = 0
+    self.delayAttack = 2
 end
 
 function Monster:serverUpdate(dt)
-    self.changed = false
+    local oldX, oldY, oldAnimationStatus = self.x, self.y, self.animationStatus --To know if changed
+
     local function filterPathIsClear(obj)
         return obj.obstacle
     end
 
     self.timeLastPathFinding = self.timeLastPathFinding + dt --To avoid too much calculations, min time between calcs
+    self.timeLastAttack = self.timeLastAttack + dt
 
     local players = server.players
-    local nearestPlayer = {instance=nil, distance=math.huge}
-    
-    local function updateNearestPlayer()
+
+    local function getNearestPlayerInView()
+        local closestDist = math.huge
+        local nearestPlayer = nil
         for _, player in pairs(players) do
-            if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then
-                local _, len = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, filterPathIsClear)
-                if len == 0 then
-                    local distance = lume.distance(player.x, player.y, self.x, self.y, true)
-                    if distance < nearestPlayer.distance then
-                        nearestPlayer = {instance=player, distance=distance}
+            if Utils:inCircleRadius(player.x, player.y, self.x, self.y, self.viewRadius) then --In radius
+                local _, lenObstacles = self.currentMap.bumpWorld:querySegment(self.x, self.y, player.x, player.y, filterPathIsClear)
+                if lenObstacles == 0 then --Si le joueur est visible, pas caché par un obstacle
+                    local distance = lume.distance(player.x, player.y, self.x, self.y, true) --Distance entre le monstre et le joueur
+                    if distance < closestDist then
+                        closestDist = distance
+                        nearestPlayer = player
                     end
                 end
             end
         end
-    end
-    
-    if self.status == "pursuit" and self.playerTarget then
-        local inCircleRadius = Utils:inCircleRadius(self.playerTarget.x, self.playerTarget.y, self.x, self.y, self.viewRadius)
-        local _, lenObstacles = self.currentMap.bumpWorld:querySegment(self.x, self.y, self.playerTarget.x, self.playerTarget.y, filterPathIsClear)
-        local isVisible = lenObstacles == 0
-    
-        if not (inCircleRadius and isVisible) then
-            updateNearestPlayer()
-        end
-    else
-        updateNearestPlayer()
+        return nearestPlayer
     end
     
 
-    if self.playerTarget then
-        if lume.distance(self.playerTarget.x, self.playerTarget.y, self.x, self.y, true) > self.sqDistAbortPursuit then
-            if nearestPlayer.instance ~= nil then
+    if self.playerTarget == nil then --Si on a pas de cible
+        local nearestPlayer = getNearestPlayerInView()
+        if nearestPlayer then --Si on trouve un joueur à poursuivre
+            self.playerTarget = nearestPlayer
+            self.status = "pursuit" --On le poursuit
+        end
+    else --Si on a déjà une cible
+        local distance = lume.distance(self.playerTarget.x+self.playerTarget.w/2, self.playerTarget.y+self.playerTarget.h/2, self.x+self.w/2, self.y+self.h/2, true) --Distance entre le joueur et le monstre
+        if distance <= self.sqMaxDistAttack then --Si on est à distance d'attaque
+            self.pathPoints = nil --Plus besoin d'avancer
+            if self.timeLastAttack >= self.delayAttack then --Si l'attaque est rechargée
+                self.status = "attack" --On attaque
+                self.timeLastAttack = 0 --On remet le compteur à 0
+                self.playerTarget:takeDamage(1, {"leftLeg", "rightLeg"})
+            else --Si l'attaque n'est pas rechargée
+                self.status = "idle" --On ne bouge pas
+            end 
+        else --Si on est trop loin pour attaquer
+            if distance <= self.sqViewRadius then --Si on est pas trop loin pour abandonner la poursuite
                 self.status = "pursuit"
-                self.playerTarget = nearestPlayer.instance
-            else
-                self.status = "idle"
-                self.playerTarget = nil
-                self.pathPoints = nil
+            else -- Si on est trop loin pour continuer à poursuivre
+                self.pathPoints = nil --On ne bouge plus
+                self.status = "idle" 
+                self.playerTarget = nil --A l'update suivante, on recherchera un joueur
             end
         end
-    else
-        if nearestPlayer.instance ~= nil then
-            self.status = "pursuit"
-            self.playerTarget = nearestPlayer.instance
-        end
     end
-    
+
     
     if self.status == "pursuit" then
         local map = GameState:getState("InGame").map
@@ -159,7 +168,6 @@ function Monster:serverUpdate(dt)
                 else --Use pathfinding
                     self.pathPoints = self.pathfinding:getPath(start, goal)
                 end
-
             end
             self.lastPlayerTargetPos = {x=self.playerTarget.x, y=self.playerTarget.y}
         end
@@ -180,42 +188,29 @@ function Monster:serverUpdate(dt)
             end
 
             if velRes.vX ~= 0 or velRes.vY ~= 0 then
-                self.changed = true --new pos
                 local newPos = {x=self.x+velRes.vX, y=self.y+velRes.vY}
                 self.x, self.y = newPos.x, newPos.y
-    
                 if lume.round(self.x) == posTarget.x and lume.round(self.y) == posTarget.y then
                     table.remove(self.pathPoints, 1)
-                end    
+                end                    
             end
         end
+    end
 
-        if self.changed then
-            self.animationStatus = "moving"
-        else
-            self.animationStatus = "idle" --MAJ du status pas envoyé au client
+    local isNewPos = oldX ~= self.x or oldY ~= self.y
+    if isNewPos then
+        self.animationStatus = "moving"
+    elseif self.status == "attack" then
+        self.animationStatus = "attacking"
+    else
+        if oldAnimationStatus ~= "attacking" then
+            self.animationStatus = "idle"
         end
     end
+
+
+    self.changed = isNewPos or oldAnimationStatus ~= self.animationStatus
 end
-
---[[function Monster:getNewPos(velX, velY)
-    local posX, posY = self.x+velX, self.y+velY
-
-    local actualX, actualY, cols = self.currentMap.bumpWorld:move(self, posX, posY,
-    function(monster, other) --TODO : add in function (filter)
-        if other.obstacle then
-            return "slide"
-        end
-    end)
-
-    return {
-        x=actualX, 
-        y=actualY, 
-        dx=velX, 
-        dy=velY,
-        collisions=cols
-    }
-end--]]
 
 function Monster:clientUpdate(dt)
     self.currentAnimation = self.animations[self.animationStatus]
@@ -229,8 +224,5 @@ function Monster:applyServerResponse(serializedMonster)
 end
 
 function Monster:draw()
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.rectangle("fill", lume.round(self.x), lume.round(self.y), self.w, self.h)
-    love.graphics.setColor(1, 1, 1)
     self.currentAnimation:draw(self.spritesheet, lume.round(self.x), lume.round(self.y), 0, 1, 1, self.offsetX, self.offsetY)
 end

@@ -66,14 +66,16 @@ function Player:init(x, y, connectId, fromServer, current)
 
     self.inventory = Inventory()
 
-    self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged
-        head = {status = 2, effect = nil},
-        leftArm = {status = 0, effect = nil},
-        rightArm = {status = 0, effect = nil},
-        torso = {status = 0, effect = nil},
-        leftLeg = {status = 0, effect = nil},
-        rightLeg = {status = 0, effect = nil}
+    self.bodyStatus = { -- 0: fine 1: partially damaged 2: fully damaged, 3: death TO RENAME
+        head = 0,
+        leftArm = 0,
+        rightArm = 0,
+        torso = 0,
+        leftLeg = 0,
+        rightLeg = 0
     }
+
+    --self.effects (blurry etc)
 
     self.currentMap.bumpWorld:add(self, self.x-8, self.y-8, self.w, self.h)
 
@@ -94,7 +96,7 @@ function Player:clientUpdate()
     local inputState = input.state --To rename 
     local newPos = self:getNewPos(inputState)
 
-    self:setPosition(newPos.x, newPos.y)
+    self:setPosition(newPos.x, newPos.y, true)
     
     self.angle = Utils:calcAngleBetw2Pts(halfWidthWindow, halfHeightWindow, self.input.mouse.x, self.input.mouse.y) --use lume function
     self:setAngle(self.angle)
@@ -118,12 +120,10 @@ function Player:applyServerResponse(player)
             --Compare with current position
             if newState.x ~= self.goalX then
                 self.goalX = newState.x
-                --playerX = lume.round(lume.lerp(self.x, newState.x, 0.5), 0.1)
                 playerX = lume.lerp(self.x, newState.x, 0.5)
             end
             if newState.y ~= self.goalY then
                 self.goalY = newState.y
-                --playerY = lume.round(lume.lerp(self.y, newState.y, 0.5), 0.1)
                 playerY = lume.lerp(self.y, newState.y, 0.5)
             end
             self:setPosition(playerX, playerY)
@@ -158,7 +158,6 @@ function Player:applyServerResponse(player)
 
         if player.angle then
             self:setAngle(player.angle)
-    
             self.direction = self:getDirection(player.angle)
         end
     end
@@ -318,12 +317,12 @@ function Player:createLights()
 
 end
 
-function Player:setPosition(x, y)
+function Player:setPosition(x, y, compensateMoving)
     self.x, self.y = x, y
 
     --Workaround...
-    if input.state.updated then
-        local bodyPos = {x=x+8, y=y+6}
+    local bodyPos = {x=x+8, y=y+6}
+    if compensateMoving and input.state.updated then
         if input.state.actions.right then
             bodyPos.x = bodyPos.x+1
         elseif input.state.actions.left then
@@ -334,10 +333,9 @@ function Player:setPosition(x, y)
         elseif input.state.actions.down then
             bodyPos.y = bodyPos.y+1
         end
-
-        self.body:SetPosition(bodyPos.x, bodyPos.y) --for lights
     end
-    --self.body:SetPosition(x+8, y+6)
+
+    self.body:SetPosition(bodyPos.x, bodyPos.y) --for lights
 end
 
 function Player:setAngle(angle)
@@ -350,9 +348,46 @@ end
 
 
 function Player:heal(qt)
+    self.changed = true
     local damagedBodyParts = lume.filter(self.bodyStatus, function(damagedPart) return damagedPart.status > 0 end)
     if #damagedBodyParts > 0 then
         local bodyPartToHeal = lume.randomchoice(damagedBodyParts)
         bodyPartToHeal.status = bodyPartToHeal.status-1
     end
 end
+
+function Player:takeDamage(qt, nameParts)
+    self.changed = true
+    local statusArray = {}
+    for _, name in ipairs(nameParts) do
+        table.insert(statusArray, { part = name, status = self.bodyStatus[name] })
+    end
+
+    -- Sort the array by status value
+    statusArray = lume.sort(statusArray, function(a, b) return a.status < b.status end)
+
+    local nbParts = #statusArray
+    local idCurrPart = 1
+
+    local damagesToDistribute = qt
+    while damagesToDistribute > 0 do
+        local currentPart = statusArray[idCurrPart]
+        local howMuchCanTake = 2 - currentPart.status
+        local damageTaken = math.min(damagesToDistribute, howMuchCanTake)
+        damagesToDistribute = damagesToDistribute - damageTaken
+        currentPart.status = currentPart.status + damageTaken
+        self.bodyStatus[currentPart.part] = currentPart.status
+
+        if damagesToDistribute == 0 then
+            --print("survived", currentPart.part, currentPart.status)
+            return
+        else
+            idCurrPart = idCurrPart + 1
+            if idCurrPart > nbParts then
+                --print("dead")
+                return
+            end
+        end
+    end
+end
+

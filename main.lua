@@ -63,8 +63,6 @@ function loadLibraries()
     Light = require("libraries/shadows/Light")
     Body = require("libraries/shadows/Body")
     PolygonShadow = require("libraries/shadows/ShadowShapes/PolygonShadow")
-
-    luastar = require("libraries/lua-star/lua-star")
 end
 
 function loadClasses()

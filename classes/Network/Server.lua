@@ -40,62 +40,61 @@ end
 
 function Server:update(dt)
     if self.gameStarted then
-            local serializedPlayers = {}
-            for _, player in ipairs(self.players) do 
-                if player.changed and player.lastRequestProcessedID then
-                    player.changed = false
-                    local serializedInventory = {} --TODO : serialized function
-                    for _, slot in ipairs(player.inventory.slots) do
-                        if slot.item ~= nil then
-                            table.insert(serializedInventory, {id=slot.id, itemName=slot.item.name})
-                        end
-                    end  
-
-                    local serializedPlayer = {
-                        x = player.x,
-                        y = player.y,
-                        bodyStatus = player.bodyStatus,
-                        angle = player.angle,
-                        animationStatus = player.animationStatus,
-                        inventory = serializedInventory,
-                        connectId = player.connectId,
-                        lastRequestProcessedID = player.lastRequestProcessedID
-                    }
-
-                    table.insert(serializedPlayers, serializedPlayer)
-                end
-            end
-            if #serializedPlayers > 0 then
-                --local dataToSend = {timestamp=love.timer.getTime(), players=serializedPlayers} --Pas besoin de timestamp ? Calculer depuis le client le temps de réponse ?
-                self.sock:sendToAll("playersUpdate", serializedPlayers)
-            end
-
-            local map = GameState:getState("InGame").map
-            if map.itemsMapUpdated then
-                local serializedItemsMap = {}
-                for _, item in ipairs(map.itemsMap) do
-                    table.insert(serializedItemsMap, {name=item.instance.name, x=item.x, y=item.y})
-                end
-                self.sock:sendToAll("itemsMapUpdate", serializedItemsMap)
-            end
-
-
-            local serializedNPCs = {monsters={}}
-            for id, monster in ipairs(self.NPCs.monsters) do
-                monster:serverUpdate(dt)
-                if monster.changed then
-                    table.insert(serializedNPCs.monsters, {
-                        id              = id,
-                        x               = monster.x,
-                        y               = monster.y,
-                        animationStatus = monster.animationStatus
-                    })
-                end
-            end
-            if #serializedNPCs.monsters > 0 then
-                self.sock:sendToAll("NPCsUpdate", serializedNPCs)
+        local serializedNPCs = {monsters={}}
+        for id, monster in ipairs(self.NPCs.monsters) do
+            monster:serverUpdate(dt)
+            if monster.changed then
+                table.insert(serializedNPCs.monsters, {
+                    id              = id,
+                    x               = monster.x,
+                    y               = monster.y,
+                    animationStatus = monster.animationStatus
+                })
             end
         end
+        if #serializedNPCs.monsters > 0 then
+            self.sock:sendToAll("NPCsUpdate", serializedNPCs)
+        end
+
+        local serializedPlayers = {}
+        for _, player in pairs(self.players) do 
+            if player.changed and player.lastRequestProcessedID then
+                player.changed = false
+                local serializedInventory = {} --TODO : serialized function
+                for _, slot in ipairs(player.inventory.slots) do
+                    if slot.item ~= nil then
+                        table.insert(serializedInventory, {id=slot.id, itemName=slot.item.name})
+                    end
+                end  
+
+                local serializedPlayer = {
+                    x = player.x,
+                    y = player.y,
+                    bodyStatus = player.bodyStatus,
+                    angle = player.angle,
+                    animationStatus = player.animationStatus,
+                    inventory = serializedInventory,
+                    connectId = player.connectId,
+                    lastRequestProcessedID = player.lastRequestProcessedID
+                }
+
+                table.insert(serializedPlayers, serializedPlayer)
+            end
+        end
+        if #serializedPlayers > 0 then
+            --local dataToSend = {timestamp=love.timer.getTime(), players=serializedPlayers} --Pas besoin de timestamp ? Calculer depuis le client le temps de réponse ?
+            self.sock:sendToAll("playersUpdate", serializedPlayers)
+        end
+
+        local map = GameState:getState("InGame").map
+        if map.itemsMapUpdated then
+            local serializedItemsMap = {}
+            for _, item in ipairs(map.itemsMap) do
+                table.insert(serializedItemsMap, {name=item.instance.name, x=item.x, y=item.y})
+            end
+            self.sock:sendToAll("itemsMapUpdate", serializedItemsMap)
+        end
+    end
 
     self.sock:update()
 
@@ -160,7 +159,6 @@ function Server:startNewGame()
 
     --Add monsters
     local x, y = map.spawnPoint.x*TILESIZE + math.random(-10, 10), map.spawnPoint.y*TILESIZE + math.random(-10, 10)
-    print(x, y)
     table.insert(self.NPCs.monsters, Monster(x, y))
 
     self.gameStarted = true
@@ -221,7 +219,7 @@ function Server:newClient(newClient, newClientPeer)
 
     -- Serialize the NPCs
     local serializedNPCs = {monsters={}}
-    for id, monster in ipairs(self.NPCs.monsters) do
+    for id, monster in pairs(self.NPCs.monsters) do
         local serializedMonster = {
             id = id,
             x = monster.x,

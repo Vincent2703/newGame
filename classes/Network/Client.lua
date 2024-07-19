@@ -52,7 +52,7 @@ function Client:init()
 
     -- Update the players
     self.sock:on("playersUpdate", function(serializedPlayers)
-        for _, serializedPlayer in ipairs(serializedPlayers) do
+        for _, serializedPlayer in pairs(serializedPlayers) do
             local isCurrentPlayer = serializedPlayer.connectId == self.sock:getConnectId()
 
             if not self.players[serializedPlayer.connectId] then --If new player
@@ -61,7 +61,7 @@ function Client:init()
                 local deserializedNewPlayer = Player(serializedPlayer.x, serializedPlayer.y, serializedPlayer.connectId, false, isCurrentPlayer)
                 deserializedNewPlayer.angle, deserializedNewPlayer.direction, deserializedNewPlayer.animationStatus = serializedPlayer.angle, serializedPlayer.direction, serializedPlayer.animationStatus
                 if serializedPlayer.inventory then
-                    for _, item in ipairs(serializedPlayer.inventory) do
+                    for _, item in pairs(serializedPlayer.inventory) do
                         deserializedNewPlayer.inventory:add(Item:getItemInTableByName(inGameState.items, item.itemName), item.slotID)
                     end
                 end
@@ -82,7 +82,7 @@ function Client:init()
 
     -- Update the NPCs
     self.sock:on("NPCsUpdate", function(serializedNPCs)
-        for _, serializedMonster in ipairs(serializedNPCs.monsters) do
+        for _, serializedMonster in pairs(serializedNPCs.monsters) do
             if not self.NPCs.monsters[serializedMonster.id] then --If new monster
                 local deserializedNewMonster = Monster(serializedMonster.x, serializedMonster.y)
                 table.insert(self.NPCs.monsters, deserializedNewMonster)
@@ -145,7 +145,6 @@ function Client:update(dt)
 
             self.timeAccumulator = self.timeAccumulator - FIXED_DT
 
-            currentPlayer:manageAnimations(dt)
         end
     end
     self.sock:update()
